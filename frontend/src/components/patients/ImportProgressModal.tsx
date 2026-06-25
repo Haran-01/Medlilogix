@@ -15,7 +15,7 @@ export function ImportProgressModal({ isOpen, onClose }: ImportProgressModalProp
             <FiLoader aria-hidden="true" className="animate-spin" size={24} />
           </div>
           <div>
-            <p className="text-lg font-extrabold text-[#07194c]">8 / 15 Files Imported</p>
+            <p className="text-lg font-extrabold text-[#07194c]">Waiting for file scan phase</p>
             <p className="mt-1 text-sm font-medium text-[#68779f]">Processing imported TXT files from MEDILAB DEVICE.</p>
           </div>
         </div>

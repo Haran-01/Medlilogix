@@ -31,7 +31,7 @@ type UsbImportState =
   | 'Importing'
   | 'Import Complete';
 
-const txtFilesFound = 15;
+const txtFilesFound = 'Unknown';
 
 const usbStateClasses: Record<UsbImportState, string> = {
   'Import Complete': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
@@ -63,14 +63,19 @@ export function PatientsPage() {
   const [importButtonState, setImportButtonState] = useState<'default' | 'ready' | 'importing'>('ready');
   const [usbStatus, setUsbStatus] = useState<{
     connected: boolean;
-    device: { deviceName: string; driveLetter: string; status: 'connected' | 'disconnected' } | null;
+    device: {
+      deviceName: string;
+      driveLetter: string;
+      driveType: number;
+      isRemovable: boolean;
+      status: 'connected' | 'disconnected';
+      volumeLabel: string;
+    } | null;
   }>({
     connected: false,
     device: null,
   });
-  const [toasts] = useState<ToastMessage[]>([
-    { id: 'success', message: '15 Patient Tests Imported Successfully', tone: 'success' },
-  ]);
+  const [toasts] = useState<ToastMessage[]>([]);
 
   const pendingCount = useMemo(() => records.filter((record) => record.status === 'Pending').length, [records]);
   const completedCount = records.length - pendingCount;
@@ -78,7 +83,7 @@ export function PatientsPage() {
   const usbDeviceName = usbStatus.device?.deviceName ?? 'No USB Connected';
   const usbDriveLetter = usbStatus.device?.driveLetter ?? '-';
   const usbConnectionStatus = usbStatus.connected ? 'Connected' : 'Disconnected';
-  const displayedTxtFilesFound = usbStatus.connected ? txtFilesFound : 0;
+  const displayedTxtFilesFound = usbStatus.connected ? txtFilesFound : '-';
 
   useEffect(() => {
     const usbBridge = window.medilogix?.usb;
@@ -132,7 +137,7 @@ export function PatientsPage() {
     importButtonState === 'importing'
       ? 'Importing...'
       : importButtonState === 'ready'
-        ? `Import ${txtFilesFound} Tests`
+        ? 'Import TXT'
         : 'Import TXT';
 
   return (

@@ -26,13 +26,13 @@ export function ImportPreviewModal({ isOpen, onClose, onImport }: ImportPreviewM
               <FiFileText aria-hidden="true" size={22} />
               <p className="text-sm font-bold uppercase text-[#68779f]">TXT Files Found</p>
             </div>
-            <p className="mt-3 text-xl font-extrabold text-[#07194c]">15</p>
+            <p className="mt-3 text-xl font-extrabold text-[#07194c]">Unknown</p>
           </div>
         </div>
 
         <div className="rounded-lg border border-[#e1e7f2] bg-white p-5">
           <p className="text-sm font-bold uppercase text-[#68779f]">Import Summary</p>
-          <p className="mt-2 text-2xl font-extrabold text-[#07194c]">15 New Patient Tests</p>
+          <p className="mt-2 text-2xl font-extrabold text-[#07194c]">Patient test count pending scan</p>
         </div>
 
         <div className="flex justify-end gap-3 border-t border-[#e7ebf3] pt-5">

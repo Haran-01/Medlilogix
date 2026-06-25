@@ -12,8 +12,11 @@ export type UsbConnectionStatus = 'connected' | 'disconnected';
 
 export interface USBDeviceInfo {
   deviceName: string;
+  driveType: number;
   driveLetter: string;
+  isRemovable: boolean;
   status: UsbConnectionStatus;
+  volumeLabel: string;
 }
 
 export interface USBStatusPayload {

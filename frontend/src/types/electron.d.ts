@@ -4,8 +4,11 @@ type UsbConnectionStatus = 'connected' | 'disconnected';
 
 interface USBDeviceInfo {
   deviceName: string;
+  driveType: number;
   driveLetter: string;
+  isRemovable: boolean;
   status: UsbConnectionStatus;
+  volumeLabel: string;
 }
 
 interface USBStatusPayload {
