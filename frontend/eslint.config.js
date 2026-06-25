@@ -9,7 +9,7 @@ export default defineConfig([
   globalIgnores(['dist']),
   ...tseslint.configs.recommended,
   {
-    files: ['electron/**/*.cjs'],
+    files: ['electron/**/*.{cjs,ts}'],
     languageOptions: {
       globals: globals.node,
     },

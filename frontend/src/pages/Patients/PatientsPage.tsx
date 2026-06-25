@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FiCheckCircle,
   FiCloud,
@@ -31,7 +31,6 @@ type UsbImportState =
   | 'Importing'
   | 'Import Complete';
 
-const usbState: UsbImportState = 'Ready to Import';
 const txtFilesFound = 15;
 
 const usbStateClasses: Record<UsbImportState, string> = {
@@ -62,12 +61,48 @@ export function PatientsPage() {
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [isImportProgressOpen, setIsImportProgressOpen] = useState(false);
   const [importButtonState, setImportButtonState] = useState<'default' | 'ready' | 'importing'>('ready');
+  const [usbStatus, setUsbStatus] = useState<{
+    connected: boolean;
+    device: { deviceName: string; driveLetter: string; status: 'connected' | 'disconnected' } | null;
+  }>({
+    connected: false,
+    device: null,
+  });
   const [toasts] = useState<ToastMessage[]>([
     { id: 'success', message: '15 Patient Tests Imported Successfully', tone: 'success' },
   ]);
 
   const pendingCount = useMemo(() => records.filter((record) => record.status === 'Pending').length, [records]);
   const completedCount = records.length - pendingCount;
+  const usbState: UsbImportState = usbStatus.connected ? 'Ready to Import' : 'No USB Connected';
+  const usbDeviceName = usbStatus.device?.deviceName ?? 'No USB Connected';
+  const usbDriveLetter = usbStatus.device?.driveLetter ?? '-';
+  const usbConnectionStatus = usbStatus.connected ? 'Connected' : 'Disconnected';
+  const displayedTxtFilesFound = usbStatus.connected ? txtFilesFound : 0;
+
+  useEffect(() => {
+    const usbBridge = window.medilogix?.usb;
+
+    if (!usbBridge) {
+      return undefined;
+    }
+
+    void usbBridge.getStatus().then(setUsbStatus);
+
+    const unsubscribeStatus = usbBridge.onStatus(setUsbStatus);
+    const unsubscribeConnected = usbBridge.onConnected((device) => {
+      setUsbStatus({ connected: true, device });
+    });
+    const unsubscribeDisconnected = usbBridge.onDisconnected(() => {
+      setUsbStatus({ connected: false, device: null });
+    });
+
+    return () => {
+      unsubscribeStatus();
+      unsubscribeConnected();
+      unsubscribeDisconnected();
+    };
+  }, []);
 
   function handleSaveMetadata(values: PatientMetadataFormValues) {
     if (!editingRecord) {
@@ -170,7 +205,7 @@ export function PatientsPage() {
             </div>
             <div>
               <p className="text-sm font-bold uppercase tracking-normal text-[#68779f]">USB Device</p>
-              <h2 className="mt-1 text-xl font-extrabold tracking-normal text-[#07194c]">MEDILAB DEVICE</h2>
+              <h2 className="mt-1 text-xl font-extrabold tracking-normal text-[#07194c]">{usbDeviceName}</h2>
               <span className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ring-1 ${usbStateClasses[usbState]}`}>
                 {usbState === 'Importing' || usbState === 'Scanning Files' ? (
                   <FiLoader aria-hidden="true" className="animate-spin" />
@@ -185,15 +220,15 @@ export function PatientsPage() {
           <div className="grid gap-4 sm:grid-cols-3 lg:min-w-[520px]">
             <div className="rounded-lg bg-[#f8fbff] p-4">
               <p className="text-xs font-bold uppercase text-[#68779f]">Status</p>
-              <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbState}</p>
+              <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbConnectionStatus}</p>
             </div>
             <div className="rounded-lg bg-[#f8fbff] p-4">
               <p className="text-xs font-bold uppercase text-[#68779f]">TXT Files Found</p>
-              <p className="mt-2 text-base font-extrabold text-[#07194c]">{txtFilesFound}</p>
+              <p className="mt-2 text-base font-extrabold text-[#07194c]">{displayedTxtFilesFound}</p>
             </div>
             <div className="rounded-lg bg-[#f8fbff] p-4">
-              <p className="text-xs font-bold uppercase text-[#68779f]">Source</p>
-              <p className="mt-2 text-base font-extrabold text-[#07194c]">Removable USB</p>
+              <p className="text-xs font-bold uppercase text-[#68779f]">Drive</p>
+              <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbDriveLetter}</p>
             </div>
           </div>
         </div>
