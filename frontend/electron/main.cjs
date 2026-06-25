@@ -2,11 +2,13 @@ require('tsx/cjs');
 
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('node:path');
+const { ImportQueue } = require('./parser/ImportQueue.ts');
 const { USBDetector } = require('./usb/USBDetector.ts');
 const { USB_EVENTS, USB_IPC_CHANNELS } = require('./usb/USBEvents.ts');
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const usbDetector = new USBDetector();
+const importQueue = new ImportQueue();
 
 function broadcastToRenderer(channel, payload) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -54,6 +56,19 @@ app.whenReady().then(() => {
   ipcMain.handle('app:get-version', () => app.getVersion());
   ipcMain.handle('app:get-platform', () => process.platform);
   ipcMain.handle(USB_IPC_CHANNELS.GET_STATUS, () => usbDetector.getStatus());
+  ipcMain.handle(USB_IPC_CHANNELS.IMPORT_TXT_FILES, async () => {
+    const status = usbDetector.getStatus();
+
+    if (!status.device?.driveLetter) {
+      return {
+        errors: [{ fileName: 'USB Device', message: 'No removable USB drive connected' }],
+        records: [],
+        txtFilesFound: 0,
+      };
+    }
+
+    return importQueue.importFromDrive(status.device.driveLetter);
+  });
 
   usbDetector.on(USB_EVENTS.CONNECTED, (device) => {
     broadcastToRenderer(USB_EVENTS.CONNECTED, device);

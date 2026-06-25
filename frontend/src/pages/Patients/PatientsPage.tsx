@@ -16,7 +16,6 @@ import { PatientAnalysisModal } from '../../components/patients/PatientAnalysisM
 import { PatientMetadataModal } from '../../components/patients/PatientMetadataModal';
 import { PatientTable } from '../../components/patients/PatientTable';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { importedPatientTests } from '../../services/patientTests.mock';
 import type { PatientMetadataFormValues, PatientTestRecord } from '../../types/patientTest';
 
 function isCompleted(values: PatientMetadataFormValues) {
@@ -54,7 +53,7 @@ const filterOptions = [
 
 export function PatientsPage() {
   usePageTitle('Patients');
-  const [records, setRecords] = useState<PatientTestRecord[]>(importedPatientTests);
+  const [records, setRecords] = useState<PatientTestRecord[]>([]);
   const [editingRecord, setEditingRecord] = useState<PatientTestRecord | null>(null);
   const [analysisRecord, setAnalysisRecord] = useState<PatientTestRecord | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -75,7 +74,8 @@ export function PatientsPage() {
     connected: false,
     device: null,
   });
-  const [toasts] = useState<ToastMessage[]>([]);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [txtFilesFoundCount, setTxtFilesFoundCount] = useState<number | null>(null);
 
   const pendingCount = useMemo(() => records.filter((record) => record.status === 'Pending').length, [records]);
   const completedCount = records.length - pendingCount;
@@ -83,7 +83,7 @@ export function PatientsPage() {
   const usbDeviceName = usbStatus.device?.deviceName ?? 'No USB Connected';
   const usbDriveLetter = usbStatus.device?.driveLetter ?? '-';
   const usbConnectionStatus = usbStatus.connected ? 'Connected' : 'Disconnected';
-  const displayedTxtFilesFound = usbStatus.connected ? txtFilesFound : '-';
+  const displayedTxtFilesFound = usbStatus.connected ? (txtFilesFoundCount ?? txtFilesFound) : '-';
 
   useEffect(() => {
     const usbBridge = window.medilogix?.usb;
@@ -92,14 +92,22 @@ export function PatientsPage() {
       return undefined;
     }
 
-    void usbBridge.getStatus().then(setUsbStatus);
+    void usbBridge.getStatus().then((status) => {
+      setUsbStatus(status);
+      setTxtFilesFoundCount(null);
+    });
 
-    const unsubscribeStatus = usbBridge.onStatus(setUsbStatus);
+    const unsubscribeStatus = usbBridge.onStatus((status) => {
+      setUsbStatus(status);
+      setTxtFilesFoundCount(null);
+    });
     const unsubscribeConnected = usbBridge.onConnected((device) => {
       setUsbStatus({ connected: true, device });
+      setTxtFilesFoundCount(null);
     });
     const unsubscribeDisconnected = usbBridge.onDisconnected(() => {
       setUsbStatus({ connected: false, device: null });
+      setTxtFilesFoundCount(null);
     });
 
     return () => {
@@ -127,10 +135,49 @@ export function PatientsPage() {
     );
   }
 
-  function handleStartImport() {
+  function pushToast(message: string, tone: ToastMessage['tone']) {
+    const id = `${Date.now()}-${message}`;
+    setToasts((currentToasts) => [...currentToasts.slice(-3), { id, message, tone }]);
+  }
+
+  async function handleStartImport() {
     setIsImportPreviewOpen(false);
     setIsImportProgressOpen(true);
     setImportButtonState('importing');
+
+    try {
+      const result = await window.medilogix?.usb.importTxtFiles();
+
+      if (!result) {
+        pushToast('Import is only available in the Electron desktop app', 'warning');
+        return;
+      }
+
+      setTxtFilesFoundCount(result.txtFilesFound);
+      setRecords(
+        result.records.map((record) => ({
+          ...record,
+          samples: record.samples.map((sample) => ({
+            time: sample.timestamp,
+            timestamp: sample.timestamp,
+            psi: sample.psi,
+          })),
+        })),
+      );
+
+      if (result.records.length > 0) {
+        pushToast(`${result.records.length} Patient Tests Imported Successfully`, 'success');
+      }
+
+      result.errors.forEach((error) => {
+        pushToast(`${error.fileName}: ${error.message}`, result.txtFilesFound === 0 ? 'warning' : 'danger');
+      });
+    } catch {
+      pushToast('Import Failed', 'danger');
+    } finally {
+      setIsImportProgressOpen(false);
+      setImportButtonState('ready');
+    }
   }
 
   const importButtonLabel =
@@ -148,7 +195,7 @@ export function PatientsPage() {
         <div>
           <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#07194c]">Patients</h1>
           <p className="mt-2 text-[16px] font-medium text-[#68779f]">
-            {records.length} imported tests · {pendingCount} pending metadata · {completedCount} completed
+            {records.length} imported tests - {pendingCount} pending metadata - {completedCount} completed
           </p>
         </div>
 
@@ -245,8 +292,8 @@ export function PatientsPage() {
             <FiFileText aria-hidden="true" className="text-[#0647ff]" size={22} />
             <p className="text-sm font-bold text-[#68779f]">Today&apos;s Imports</p>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-[#07194c]">15</p>
-          <p className="mt-1 text-sm font-medium text-[#68779f]">New TXT files detected today</p>
+          <p className="mt-3 text-3xl font-extrabold text-[#07194c]">{records.length}</p>
+          <p className="mt-1 text-sm font-medium text-[#68779f]">Imported into temporary queue</p>
         </div>
         <div className="rounded-lg border border-[#e1e7f2] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-3">

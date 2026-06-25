@@ -1,7 +1,8 @@
 export type PatientTestStatus = 'Pending' | 'Completed';
 
 export interface PsiSample {
-  time: string;
+  time?: string;
+  timestamp?: string;
   psi: number;
 }
 
@@ -14,6 +15,9 @@ export interface PatientTestRecord {
   testDate: string;
   testDuration: string;
   peakPsi: number;
+  averagePsi?: number;
+  minimumPsi?: number;
+  sampleCount?: number;
   importedAt: string;
   status: PatientTestStatus;
   samples: PsiSample[];

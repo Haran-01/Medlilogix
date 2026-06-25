@@ -6,6 +6,7 @@ export const USB_EVENTS = {
 
 export const USB_IPC_CHANNELS = {
   GET_STATUS: 'usb:get-status',
+  IMPORT_TXT_FILES: 'usb:import-txt-files',
 } as const;
 
 export type UsbConnectionStatus = 'connected' | 'disconnected';

@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('medilogix', {
   },
   usb: {
     getStatus: () => ipcRenderer.invoke('usb:get-status'),
+    importTxtFiles: () => ipcRenderer.invoke('usb:import-txt-files'),
     onConnected: (callback) => subscribe(usbChannels.connected, callback),
     onDisconnected: (callback) => subscribe(usbChannels.disconnected, callback),
     onStatus: (callback) => subscribe(usbChannels.status, callback),
