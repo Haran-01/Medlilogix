@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { PatientMetadataFormValues, PatientTestRecord } from '../../types/patientTest';
 import { Button } from '../common/Button';
@@ -7,11 +7,12 @@ import { Modal } from '../common/Modal';
 interface PatientMetadataModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (values: PatientMetadataFormValues) => void;
+  onSave: (values: PatientMetadataFormValues) => Promise<boolean>;
   record: PatientTestRecord | null;
 }
 
 export function PatientMetadataModal({ isOpen, onClose, onSave, record }: PatientMetadataModalProps) {
+  const [isSaving, setIsSaving] = useState(false);
   const {
     formState: { errors },
     handleSubmit,
@@ -45,9 +46,14 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Metadata">
       <form
         className="space-y-5"
-        onSubmit={handleSubmit((values) => {
-          onSave(values);
-          onClose();
+        onSubmit={handleSubmit(async (values) => {
+          setIsSaving(true);
+          const wasSaved = await onSave(values);
+          setIsSaving(false);
+
+          if (wasSaved) {
+            onClose();
+          }
         })}
       >
         <div className="grid gap-4 sm:grid-cols-2">
@@ -120,10 +126,10 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
         </label>
 
         <div className="flex justify-end gap-3 border-t border-[#e7ebf3] pt-5">
-          <Button onClick={onClose} type="button" variant="secondary">
+          <Button disabled={isSaving} onClick={onClose} type="button" variant="secondary">
             Cancel
           </Button>
-          <Button type="submit">Save</Button>
+          <Button disabled={isSaving} type="submit">{isSaving ? 'Saving...' : 'Save'}</Button>
         </div>
       </form>
     </Modal>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FiCheckCircle,
   FiCloud,
@@ -16,6 +16,7 @@ import { PatientAnalysisModal } from '../../components/patients/PatientAnalysisM
 import { PatientMetadataModal } from '../../components/patients/PatientMetadataModal';
 import { PatientTable } from '../../components/patients/PatientTable';
 import { usePageTitle } from '../../hooks/usePageTitle';
+import { createPatientTest, getPatientTests } from '../../services/patientTests.service';
 import type { PatientMetadataFormValues, PatientTestRecord } from '../../types/patientTest';
 
 function isCompleted(values: PatientMetadataFormValues) {
@@ -85,6 +86,21 @@ export function PatientsPage() {
   const usbConnectionStatus = usbStatus.connected ? 'Connected' : 'Disconnected';
   const displayedTxtFilesFound = usbStatus.connected ? (txtFilesFoundCount ?? txtFilesFound) : '-';
 
+  const pushToast = useCallback((message: string, tone: ToastMessage['tone']) => {
+    const id = `${Date.now()}-${message}`;
+    setToasts((currentToasts) => [...currentToasts.slice(-3), { id, message, tone }]);
+  }, []);
+
+  useEffect(() => {
+    void getPatientTests()
+      .then((savedRecords) => {
+        setRecords(savedRecords.map((record) => ({ ...record, recordKey: record.recordId })));
+      })
+      .catch(() => {
+        pushToast('Saved records could not be loaded', 'danger');
+      });
+  }, [pushToast]);
+
   useEffect(() => {
     const usbBridge = window.medilogix?.usb;
 
@@ -117,27 +133,37 @@ export function PatientsPage() {
     };
   }, []);
 
-  function handleSaveMetadata(values: PatientMetadataFormValues) {
+  async function handleSaveMetadata(values: PatientMetadataFormValues) {
     if (!editingRecord) {
-      return;
+      return false;
     }
 
-    setRecords((currentRecords) =>
-      currentRecords.map((record) =>
-        record.id === editingRecord.id
-          ? {
-              ...record,
-              ...values,
-              status: isCompleted(values) ? 'Completed' : 'Pending',
-            }
-          : record,
-      ),
-    );
-  }
+    if (!isCompleted(values)) {
+      pushToast('Complete all metadata fields before saving', 'warning');
+      return false;
+    }
 
-  function pushToast(message: string, tone: ToastMessage['tone']) {
-    const id = `${Date.now()}-${message}`;
-    setToasts((currentToasts) => [...currentToasts.slice(-3), { id, message, tone }]);
+    try {
+      const savedRecord = await createPatientTest({
+        ...editingRecord,
+        ...values,
+        status: 'Completed',
+      });
+      const editingKey = editingRecord.recordKey ?? editingRecord.recordId ?? editingRecord.id;
+
+      setRecords((currentRecords) =>
+        currentRecords.map((record) => {
+          const recordKey = record.recordKey ?? record.recordId ?? record.id;
+
+          return recordKey === editingKey ? { ...savedRecord, recordKey: savedRecord.recordId } : record;
+        }),
+      );
+      pushToast('Patient test record saved', 'success');
+      return true;
+    } catch {
+      pushToast('Record was not saved. Complete every required field and try again.', 'danger');
+      return false;
+    }
   }
 
   async function handleStartImport() {
@@ -154,16 +180,20 @@ export function PatientsPage() {
       }
 
       setTxtFilesFoundCount(result.txtFilesFound);
-      setRecords(
-        result.records.map((record) => ({
-          ...record,
-          samples: record.samples.map((sample) => ({
-            time: sample.timestamp,
-            timestamp: sample.timestamp,
-            psi: sample.psi,
-          })),
+      const importedRecords = result.records.map((record) => ({
+        ...record,
+        recordKey: `imported-${record.id}-${record.importedAt}`,
+        samples: record.samples.map((sample) => ({
+          time: sample.timestamp,
+          timestamp: sample.timestamp,
+          psi: sample.psi,
         })),
-      );
+      }));
+
+      setRecords((currentRecords) => [
+        ...importedRecords,
+        ...currentRecords.filter((record) => record.status === 'Completed'),
+      ]);
 
       if (result.records.length > 0) {
         pushToast(`${result.records.length} Patient Tests Imported Successfully`, 'success');

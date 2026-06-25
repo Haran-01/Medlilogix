@@ -3,12 +3,15 @@ require('tsx/cjs');
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('node:path');
 const { ImportQueue } = require('./parser/ImportQueue.ts');
+const { MedilogixApiServer } = require('./server/ApiServer.ts');
+const { loadEnvFile } = require('./server/Env.ts');
 const { USBDetector } = require('./usb/USBDetector.ts');
 const { USB_EVENTS, USB_IPC_CHANNELS } = require('./usb/USBEvents.ts');
 
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const usbDetector = new USBDetector();
 const importQueue = new ImportQueue();
+let apiServer;
 
 function broadcastToRenderer(channel, payload) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -52,7 +55,12 @@ function createMainWindow() {
   return mainWindow;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  loadEnvFile(path.join(__dirname, '..', '.env'));
+  apiServer = new MedilogixApiServer();
+  await apiServer.start();
+
+  ipcMain.handle('api:get-base-url', () => apiServer.getBaseUrl());
   ipcMain.handle('app:get-version', () => app.getVersion());
   ipcMain.handle('app:get-platform', () => process.platform);
   ipcMain.handle(USB_IPC_CHANNELS.GET_STATUS, () => usbDetector.getStatus());
@@ -101,4 +109,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   usbDetector.stop();
+  void apiServer?.stop();
 });

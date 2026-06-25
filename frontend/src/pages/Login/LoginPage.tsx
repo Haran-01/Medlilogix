@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
 import {
   FiEye,
@@ -12,6 +13,7 @@ import {
 } from 'react-icons/fi';
 import { z } from 'zod';
 import medilogixLogo from '../../assets/medilogix-logo.png';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 const loginSchema = z.object({
@@ -23,11 +25,32 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   usePageTitle('Login');
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit } = useForm<LoginFormValues>();
 
-  function onSubmit(values: LoginFormValues) {
-    loginSchema.safeParse(values);
+  async function onSubmit(values: LoginFormValues) {
+    const parsedValues = loginSchema.safeParse(values);
+
+    if (!parsedValues.success) {
+      setErrorMessage('Enter a valid email and a password with at least 8 characters.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      await login(parsedValues.data.email, parsedValues.data.password);
+      navigate('/patients', { replace: true });
+    } catch {
+      setErrorMessage('Invalid email or password.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -207,11 +230,13 @@ export function LoginPage() {
 
               <button
                 className="flex h-14 w-full items-center justify-center gap-3 rounded-lg bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 text-lg font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,0.25)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                disabled={isSubmitting}
                 type="submit"
               >
                 <FiLock aria-hidden="true" />
-                Sign In
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
               </button>
+              {errorMessage ? <p className="text-sm font-bold text-rose-600">{errorMessage}</p> : null}
             </form>
 
             <div className="my-5 flex items-center gap-6 text-sm text-[#52628f]">

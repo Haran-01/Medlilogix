@@ -8,6 +8,8 @@ export interface PsiSample {
 
 export interface PatientTestRecord {
   id: string;
+  recordId?: string;
+  recordKey?: string;
   patientName: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   age: string;
@@ -19,6 +21,8 @@ export interface PatientTestRecord {
   minimumPsi?: number;
   sampleCount?: number;
   importedAt: string;
+  savedAt?: string;
+  sourceFileName?: string;
   status: PatientTestStatus;
   samples: PsiSample[];
 }

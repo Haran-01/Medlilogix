@@ -16,6 +16,9 @@ function subscribe(channel, callback) {
 }
 
 contextBridge.exposeInMainWorld('medilogix', {
+  api: {
+    getBaseUrl: () => ipcRenderer.invoke('api:get-base-url'),
+  },
   app: {
     getPlatform: () => ipcRenderer.invoke('app:get-platform'),
     getVersion: () => ipcRenderer.invoke('app:get-version'),

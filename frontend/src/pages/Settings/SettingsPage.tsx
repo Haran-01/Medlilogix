@@ -9,11 +9,11 @@ export function SettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Settings"
-        description="Settings route placeholder for future preferences, roles, and workspace configuration."
+        description="Application configuration."
       />
       <Card>
-        <p className="text-sm font-semibold text-slate-950">Configuration surface prepared</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">No backend, authentication, or database logic is connected.</p>
+        <p className="text-sm font-semibold text-slate-950">Database-backed records are enabled</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Imported TXT files are saved only after required metadata is completed.</p>
       </Card>
     </div>
   );

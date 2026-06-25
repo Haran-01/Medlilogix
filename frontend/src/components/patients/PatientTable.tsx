@@ -73,7 +73,7 @@ export function PatientTable({ onEditMetadata, onViewAnalysis, records }: Patien
           </thead>
           <tbody>
             {records.map((record) => (
-              <tr className="border-b border-[#e7ebf3] last:border-b-0 hover:bg-[#fbfdff]" key={record.id}>
+              <tr className="border-b border-[#e7ebf3] last:border-b-0 hover:bg-[#fbfdff]" key={record.recordKey ?? record.recordId ?? record.id}>
                 <td className="h-16 whitespace-nowrap px-6 font-extrabold">{record.id}</td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">
                   {record.patientName || <span className="text-[#8a97bc]">Pending metadata</span>}
