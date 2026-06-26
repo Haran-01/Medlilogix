@@ -1,7 +1,14 @@
-require('tsx/cjs');
-
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('node:path');
+const { createRequire } = require('node:module');
+
+const appRoot = path.join(__dirname, '..', '..');
+const frontendRoot = path.join(appRoot, 'frontend');
+const backendRoot = path.join(appRoot, 'backend');
+const frontendRequire = createRequire(path.join(frontendRoot, 'package.json'));
+
+frontendRequire('tsx/cjs');
+
+const { app, BrowserWindow, ipcMain, shell } = frontendRequire('electron');
 const { ImportQueue } = require('./parser/ImportQueue.ts');
 const { MedilogixApiServer } = require('./server/ApiServer.ts');
 const { loadEnvFile } = require('./server/Env.ts');
@@ -49,14 +56,15 @@ function createMainWindow() {
     mainWindow.loadURL(rendererUrl);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(frontendRoot, 'dist', 'index.html'));
   }
 
   return mainWindow;
 }
 
 app.whenReady().then(async () => {
-  loadEnvFile(path.join(__dirname, '..', '.env'));
+  loadEnvFile(path.join(frontendRoot, '.env'));
+  loadEnvFile(path.join(backendRoot, '.env'));
   apiServer = new MedilogixApiServer();
   await apiServer.start();
 

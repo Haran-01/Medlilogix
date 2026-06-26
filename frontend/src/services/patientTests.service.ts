@@ -1,6 +1,19 @@
 import type { PatientTestRecord } from '../types/patientTest';
 import { apiClient } from './apiClient';
 
+function getApiErrorMessage(error: unknown) {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    const message = response?.data?.message;
+
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  return 'Record was not saved. Complete every required field and try again.';
+}
+
 export async function getPatientTests() {
   const response = await apiClient.get<{ records: PatientTestRecord[] }>('/patient-tests');
 
@@ -14,7 +27,11 @@ export async function getPatientTest(recordId: string) {
 }
 
 export async function createPatientTest(record: PatientTestRecord) {
-  const response = await apiClient.post<{ record: PatientTestRecord }>('/patient-tests', record);
+  try {
+    const response = await apiClient.post<{ record: PatientTestRecord }>('/patient-tests', record);
 
-  return response.data.record;
+    return response.data.record;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error), { cause: error });
+  }
 }

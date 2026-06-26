@@ -1,13 +1,9 @@
-import { FiBell, FiLogOut, FiMenu, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiUser } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import medilogixLogo from '../../assets/medilogix-logo.png';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../common/Button';
 
-interface TopbarProps {
-  onMenuClick: () => void;
-}
-
-export function Topbar({ onMenuClick }: TopbarProps) {
+export function Topbar() {
   const { doctor, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -17,34 +13,32 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-[#e7ebf3] bg-white shadow-[0_2px_12px_rgba(15,23,42,0.05)]">
-      <div className="flex min-h-[86px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Button
-          aria-label="Open navigation"
-          className="h-10 w-10 px-0 lg:hidden"
-          onClick={onMenuClick}
-          variant="secondary"
+    <header className="sticky top-0 z-20 border-b border-[#dfe7f2] bg-white/92 shadow-[0_12px_34px_rgba(15,23,42,0.06)] backdrop-blur">
+      <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <button
+          className="flex min-w-0 items-center gap-3 rounded-md text-left transition hover:opacity-90"
+          onClick={() => navigate('/patients')}
+          type="button"
         >
-          <FiMenu aria-hidden="true" />
-        </Button>
+          <span className="grid h-11 w-11 place-items-center rounded-lg border border-[#e1e7f2] bg-white shadow-sm">
+            <img alt="MediLogiX" className="h-7 w-auto object-contain" src={medilogixLogo} />
+          </span>
+          <span className="text-xl font-extrabold tracking-normal text-[#07194c]">Medilogix</span>
+        </button>
 
-        <div className="ml-auto flex items-center gap-4">
-          <div className="relative grid h-10 w-10 place-items-center rounded-full text-[#07194c]">
-            <FiBell aria-hidden="true" size={25} />
-            <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white">
-              3
-            </span>
-          </div>
-          <div className="grid h-10 w-10 place-items-center rounded-full border-2 border-[#07194c] text-[#07194c]">
+        <div className="flex items-center gap-3">
+          <button
+            aria-label="Open profile"
+            className="grid h-11 w-11 place-items-center rounded-full border border-[#d7deea] bg-white text-[#07194c] shadow-sm transition hover:border-[#0647ff] hover:bg-[#eef4ff] hover:text-[#0647ff]"
+            onClick={() => navigate('/profile')}
+            title={doctor?.name ?? 'Profile'}
+            type="button"
+          >
             <FiUser aria-hidden="true" size={22} />
-          </div>
-          <div className="hidden min-w-0 sm:block">
-            <p className="truncate text-sm font-extrabold text-[#07194c]">{doctor?.name ?? 'Doctor'}</p>
-            <p className="truncate text-xs font-semibold text-[#68779f]">{doctor?.email}</p>
-          </div>
+          </button>
           <button
             aria-label="Sign out"
-            className="grid h-10 w-10 place-items-center rounded-md border border-[#d7deea] bg-white text-[#07194c] shadow-sm transition hover:bg-[#f6f8fb]"
+            className="grid h-11 w-11 place-items-center rounded-md border border-[#d7deea] bg-white text-[#07194c] shadow-sm transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
             onClick={handleLogout}
             title="Sign out"
             type="button"

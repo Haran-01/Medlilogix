@@ -8,7 +8,7 @@ interface AuthContextValue {
   doctor: Doctor | null;
   isAuthenticated: boolean;
   isCheckingSession: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (gmail: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsCheckingSession(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const response = await loginDoctor(email, password);
+  const login = useCallback(async (gmail: string, password: string) => {
+    const response = await loginDoctor(gmail, password);
 
     localStorage.setItem(authTokenStorageKey, response.token);
     localStorage.setItem(doctorStorageKey, JSON.stringify(response.doctor));

@@ -31,11 +31,16 @@
     margin: 0;
     overflow-x: hidden;
     color: #102033;
-    background: #f6f8fb;
+    background: #f4f7fb;
     font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    color: #ffffff;
+    background: #0647ff;
   }
 
   button,

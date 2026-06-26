@@ -5,8 +5,7 @@ import { LoginPage } from './pages/Login/LoginPage';
 import { PatientDetailsPage } from './pages/PatientDetails/PatientDetailsPage';
 import { PatientsPage } from './pages/Patients/PatientsPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
-import { ReportsPage } from './pages/Reports/ReportsPage';
-import { SettingsPage } from './pages/Settings/SettingsPage';
+import { SignupPage } from './pages/Login/SignupPage';
 
 function ProtectedApp() {
   const { isAuthenticated, isCheckingSession } = useAuth();
@@ -28,14 +27,14 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/patients" replace /> : <LoginPage />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/patients" replace /> : <SignupPage />} />
       <Route element={<ProtectedApp />}>
         <Route index element={<Navigate to="/patients" replace />} />
         <Route path="/patients" element={<PatientsPage />} />
         <Route path="/patient/:id" element={<PatientDetailsPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
+      <Route path="*" element={<Navigate to={isAuthenticated ? '/patients' : '/login'} replace />} />
     </Routes>
   );
 }

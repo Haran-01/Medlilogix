@@ -1,8 +1,7 @@
 export const paths = {
   login: '/login',
+  signup: '/signup',
   patients: '/patients',
   patientDetails: (id: string) => `/patient/${id}`,
-  reports: '/reports',
-  settings: '/settings',
   profile: '/profile',
 } as const;

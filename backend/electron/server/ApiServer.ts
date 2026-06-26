@@ -1,7 +1,7 @@
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createToken, verifyPassword, verifyToken } from './Auth';
-import { MedilogixDatabase, type DoctorRecord, type PatientTestInput } from './Database';
+import { MedilogixDatabase, type DoctorRecord, type PatientTestInput, type RegisterDoctorInput } from './Database';
 
 interface RequestContext {
   body: unknown;
@@ -109,6 +109,11 @@ export class MedilogixApiServer {
       return;
     }
 
+    if (method === 'POST' && url.pathname === '/api/auth/register') {
+      await this.register(context);
+      return;
+    }
+
     context.doctor = await this.authenticate(request);
 
     if (!context.doctor) {
@@ -118,6 +123,11 @@ export class MedilogixApiServer {
 
     if (method === 'GET' && url.pathname === '/api/auth/me') {
       this.sendJson(response, 200, { doctor: context.doctor });
+      return;
+    }
+
+    if (method === 'POST' && url.pathname === '/api/auth/change-password') {
+      await this.changePassword(context);
       return;
     }
 
@@ -150,26 +160,27 @@ export class MedilogixApiServer {
 
   private async login(context: RequestContext) {
     const { response } = context;
-    const body = context.body as { email?: unknown; password?: unknown } | null;
-    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    const body = context.body as { email?: unknown; gmail?: unknown; password?: unknown } | null;
+    const emailValue = typeof body?.gmail === 'string' ? body.gmail : body?.email;
+    const email = typeof emailValue === 'string' ? emailValue.trim().toLowerCase() : '';
     const password = typeof body?.password === 'string' ? body.password : '';
 
     if (!email || !password) {
-      this.sendJson(response, 400, { message: 'Email and password are required' });
+      this.sendJson(response, 400, { message: 'Gmail and password are required' });
       return;
     }
 
     const doctor = await this.database.findDoctorByEmail(email);
 
     if (!doctor || !verifyPassword(password, doctor.passwordSalt, doctor.passwordHash)) {
-      this.sendJson(response, 401, { message: 'Invalid email or password' });
+      this.sendJson(response, 401, { message: 'Invalid Gmail or password' });
       return;
     }
 
     const publicDoctor = await this.database.getDoctorById(doctor.id);
 
     if (!publicDoctor) {
-      this.sendJson(response, 401, { message: 'Invalid email or password' });
+      this.sendJson(response, 401, { message: 'Invalid Gmail or password' });
       return;
     }
 
@@ -177,6 +188,49 @@ export class MedilogixApiServer {
       doctor: publicDoctor,
       token: createToken(this.database.getTokenSecret(), publicDoctor),
     });
+  }
+
+  private async register(context: RequestContext) {
+    const { response } = context;
+    const validation = this.validateRegistration(context.body);
+
+    if (!validation.ok) {
+      this.sendJson(response, 422, { message: validation.message });
+      return;
+    }
+
+    try {
+      const doctor = await this.database.createDoctor(validation.value);
+      this.sendJson(response, 201, { doctor });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Registration failed';
+      this.sendJson(response, message.includes('already exists') ? 409 : 500, { message });
+    }
+  }
+
+  private async changePassword(context: RequestContext) {
+    const { doctor, response } = context;
+    const body = context.body as { currentPassword?: unknown; newPassword?: unknown } | null;
+    const currentPassword = typeof body?.currentPassword === 'string' ? body.currentPassword : '';
+    const newPassword = typeof body?.newPassword === 'string' ? body.newPassword : '';
+
+    if (!doctor) {
+      this.sendJson(response, 401, { message: 'Authentication required' });
+      return;
+    }
+
+    if (!currentPassword || newPassword.length < 8) {
+      this.sendJson(response, 422, { message: 'Enter your current password and a new password with at least 8 characters' });
+      return;
+    }
+
+    try {
+      await this.database.changeDoctorPassword(doctor.id, currentPassword, newPassword);
+      this.sendJson(response, 200, { message: 'Password updated successfully' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Password could not be updated';
+      this.sendJson(response, message === 'Current password is incorrect' ? 401 : 500, { message });
+    }
   }
 
   private async createPatientTest(context: RequestContext) {
@@ -290,6 +344,47 @@ export class MedilogixApiServer {
     };
   }
 
+  private validateRegistration(body: unknown): { ok: true; value: RegisterDoctorInput } | { message: string; ok: false } {
+    const value = body as Partial<RegisterDoctorInput> | null;
+
+    if (!value || typeof value !== 'object') {
+      return { ok: false, message: 'Registration details are required' };
+    }
+
+    const name = typeof value.name === 'string' ? value.name.trim() : '';
+    const phoneNumber = typeof value.phoneNumber === 'string' ? value.phoneNumber.trim() : '';
+    const serialNumber = typeof value.serialNumber === 'string' ? value.serialNumber.trim().toUpperCase() : '';
+    const gmail = typeof value.gmail === 'string' ? value.gmail.trim().toLowerCase() : '';
+    const password = typeof value.password === 'string' ? value.password : '';
+
+    if (!name || !phoneNumber || !serialNumber || !gmail || !password) {
+      return { ok: false, message: 'Complete every sign-up field' };
+    }
+
+    if (!/^[^\s@]+@gmail\.com$/i.test(gmail)) {
+      return { ok: false, message: 'Enter a valid Gmail address' };
+    }
+
+    if (!/^(?=.*[A-Z])(?=.*\d)[A-Z0-9]+$/i.test(serialNumber)) {
+      return { ok: false, message: 'Serial number must contain letters and numbers' };
+    }
+
+    if (password.length < 8) {
+      return { ok: false, message: 'Password must be at least 8 characters' };
+    }
+
+    return {
+      ok: true,
+      value: {
+        gmail,
+        name,
+        password,
+        phoneNumber,
+        serialNumber,
+      },
+    };
+  }
+
   private readJsonBody(request: IncomingMessage) {
     return new Promise<unknown>((resolve, reject) => {
       const chunks: Buffer[] = [];
@@ -342,7 +437,7 @@ export class MedilogixApiServer {
     }
 
     response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
     response.setHeader('Access-Control-Max-Age', '86400');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');

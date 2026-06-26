@@ -1,11 +1,13 @@
 import crypto from 'node:crypto';
-import { hashPassword } from './Auth';
+import { hashPassword, verifyPassword } from './Auth';
 
 export interface DoctorRecord {
   createdAt: string;
   email: string;
   id: string;
   name: string;
+  phoneNumber: string;
+  serialNumber: string;
 }
 
 export interface DoctorAuthRecord extends DoctorRecord {
@@ -20,6 +22,8 @@ interface DoctorRow {
   name: string;
   password_hash: string;
   password_salt: string;
+  phone_number?: string;
+  serial_number?: string;
 }
 
 interface PatientTestRow {
@@ -67,6 +71,14 @@ export interface PatientTestMetadataInput {
   description: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   patientName: string;
+}
+
+export interface RegisterDoctorInput {
+  gmail: string;
+  name: string;
+  password: string;
+  phoneNumber: string;
+  serialNumber: string;
 }
 
 export interface PatientTestRecord {
@@ -168,31 +180,130 @@ export class MedilogixDatabase {
   }
 
   async createPatientTest(doctorId: string, input: PatientTestInput) {
-    const recordId = crypto.randomUUID();
-    const savedAt = new Date().toISOString();
-    const record = await this.rpc<PatientTestRow>('save_patient_test', {
-      p_age: Number(input.age),
-      p_average_psi: input.averagePsi,
-      p_description: input.description,
-      p_doctor_id: doctorId,
-      p_gender: input.gender,
-      p_id: recordId,
-      p_imported_at: input.importedAt,
-      p_minimum_psi: input.minimumPsi,
-      p_patient_file_id: input.id,
-      p_patient_name: input.patientName,
-      p_peak_psi: input.peakPsi,
-      p_samples: input.samples.map((sample) => ({
-        psi: sample.psi,
-        timestamp: sample.timestamp ?? sample.time,
-      })),
-      p_saved_at: savedAt,
-      p_source_file_name: input.sourceFileName ?? null,
-      p_test_date: input.testDate,
-      p_test_duration: input.testDuration,
+    const existingRecord = await this.request<Array<{ id: string }>>('patient_test_records', {
+      query: {
+        limit: '1',
+        patient_file_id: `eq.${input.id}`,
+        select: 'id',
+      },
     });
 
+    if (existingRecord.length > 0) {
+      throw new Error(`Patient ID ${input.id} already exists. Duplicate patient IDs are not allowed.`);
+    }
+
+    const recordId = crypto.randomUUID();
+    const savedAt = new Date().toISOString();
+    let record: PatientTestRow;
+
+    try {
+      [record] = await this.request<PatientTestRow[]>('patient_test_records', {
+        body: {
+          age: Number(input.age),
+          average_psi: input.averagePsi,
+          description: input.description,
+          doctor_id: doctorId,
+          gender: input.gender,
+          id: recordId,
+          imported_at: input.importedAt,
+          minimum_psi: input.minimumPsi,
+          patient_file_id: input.id,
+          patient_name: input.patientName,
+          peak_psi: input.peakPsi,
+          sample_count: input.samples.length,
+          saved_at: savedAt,
+          source_file_name: input.sourceFileName ?? null,
+          test_date: input.testDate,
+          test_duration: input.testDuration,
+        },
+        method: 'POST',
+        prefer: 'return=representation',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+
+      if (message.includes('duplicate key') || message.includes('23505')) {
+        throw new Error(`Patient ID ${input.id} already exists. Duplicate patient IDs are not allowed.`);
+      }
+
+      throw error;
+    }
+
+    try {
+      await this.request('patient_test_samples', {
+        body: input.samples.map((sample, index) => ({
+          psi: sample.psi,
+          record_id: recordId,
+          sample_order: index,
+          timestamp: sample.timestamp ?? sample.time,
+        })),
+        method: 'POST',
+      });
+    } catch (error) {
+      await this.request('patient_test_records', {
+        method: 'DELETE',
+        query: {
+          id: `eq.${recordId}`,
+        },
+      }).catch(() => undefined);
+      throw error;
+    }
+
     return this.mapPatientTest(record);
+  }
+
+  async createDoctor(input: RegisterDoctorInput) {
+    const existingDoctor = await this.findDoctorByEmail(input.gmail);
+
+    if (existingDoctor) {
+      throw new Error('An account already exists for this Gmail address');
+    }
+
+    const credentials = hashPassword(input.password);
+    const [row] = await this.request<DoctorRow[]>('doctors', {
+      body: {
+        created_at: new Date().toISOString(),
+        email: input.gmail,
+        id: crypto.randomUUID(),
+        name: input.name,
+        password_hash: credentials.hash,
+        password_salt: credentials.salt,
+        phone_number: input.phoneNumber,
+        serial_number: input.serialNumber,
+      },
+      method: 'POST',
+      prefer: 'return=representation',
+    });
+
+    return this.mapDoctor(row);
+  }
+
+  async changeDoctorPassword(doctorId: string, currentPassword: string, newPassword: string) {
+    const rows = await this.request<DoctorRow[]>('doctors', {
+      query: {
+        id: `eq.${doctorId}`,
+        limit: '1',
+        select: '*',
+      },
+    });
+    const doctor = rows[0] ? this.mapDoctorAuth(rows[0]) : null;
+
+    if (!doctor || !verifyPassword(currentPassword, doctor.passwordSalt, doctor.passwordHash)) {
+      throw new Error('Current password is incorrect');
+    }
+
+    const credentials = hashPassword(newPassword);
+
+    await this.request('doctors', {
+      body: {
+        password_hash: credentials.hash,
+        password_salt: credentials.salt,
+      },
+      method: 'PATCH',
+      query: {
+        id: `eq.${doctorId}`,
+      },
+    });
   }
 
   async updatePatientTestMetadata(recordId: string, doctorId: string, input: PatientTestMetadataInput) {
@@ -239,6 +350,8 @@ export class MedilogixDatabase {
         name,
         password_hash: credentials.hash,
         password_salt: credentials.salt,
+        phone_number: '',
+        serial_number: '',
       },
       method: 'POST',
     });
@@ -284,6 +397,8 @@ export class MedilogixDatabase {
       email: row.email,
       id: row.id,
       name: row.name,
+      phoneNumber: row.phone_number ?? '',
+      serialNumber: row.serial_number ?? '',
     };
   }
 
@@ -299,7 +414,6 @@ export class MedilogixDatabase {
     table: string,
     options: {
       body?: unknown;
-      method?: 'DELETE' | 'GET' | 'POST';
       method?: 'DELETE' | 'GET' | 'PATCH' | 'POST';
       prefer?: string;
       query?: Record<string, string>;
@@ -336,29 +450,4 @@ export class MedilogixDatabase {
     return JSON.parse(responseText) as T;
   }
 
-  private async rpc<T = unknown>(functionName: string, body: unknown): Promise<T> {
-    const url = `${this.supabaseUrl}/rest/v1/rpc/${functionName}`;
-    const response = await fetch(url, {
-      body: JSON.stringify(body),
-      headers: {
-        apikey: this.anonKey,
-        Authorization: `Bearer ${this.serviceRoleKey}`,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      throw new Error(`Supabase RPC failed: ${response.status} ${details}`);
-    }
-
-    const responseText = await response.text();
-
-    if (!responseText) {
-      return undefined as T;
-    }
-
-    return JSON.parse(responseText) as T;
-  }
 }

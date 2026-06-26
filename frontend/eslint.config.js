@@ -6,10 +6,10 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'frontend/dist']),
   ...tseslint.configs.recommended,
   {
-    files: ['electron/**/*.{cjs,ts}'],
+    files: ['backend/electron/**/*.{cjs,ts}', '../backend/electron/**/*.{cjs,ts}'],
     languageOptions: {
       globals: globals.node,
     },
@@ -18,7 +18,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'frontend/src/**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,

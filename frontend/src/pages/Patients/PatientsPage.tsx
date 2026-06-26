@@ -89,6 +89,9 @@ export function PatientsPage() {
   const pushToast = useCallback((message: string, tone: ToastMessage['tone']) => {
     const id = `${Date.now()}-${message}`;
     setToasts((currentToasts) => [...currentToasts.slice(-3), { id, message, tone }]);
+    window.setTimeout(() => {
+      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
+    }, 3500);
   }, []);
 
   useEffect(() => {
@@ -160,8 +163,8 @@ export function PatientsPage() {
       );
       pushToast('Patient test record saved', 'success');
       return true;
-    } catch {
-      pushToast('Record was not saved. Complete every required field and try again.', 'danger');
+    } catch (error) {
+      pushToast(error instanceof Error ? error.message : 'Record was not saved. Complete every required field and try again.', 'danger');
       return false;
     }
   }
@@ -196,7 +199,7 @@ export function PatientsPage() {
       ]);
 
       if (result.records.length > 0) {
-        pushToast(`${result.records.length} Patient Tests Imported Successfully`, 'success');
+        pushToast(`${result.records.length} files imported successfully.`, 'success');
       }
 
       result.errors.forEach((error) => {
@@ -221,15 +224,17 @@ export function PatientsPage() {
     <div className="space-y-6">
       <ToastStack messages={toasts} />
 
+      <div className="rounded-xl border border-[#dfe7f2] bg-white/92 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="grid gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(300px,520px)_auto] xl:items-center">
         <div>
-          <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#07194c]">Patients</h1>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#059669]">Patient workspace</p>
+          <h1 className="mt-1 text-[28px] font-extrabold leading-tight tracking-normal text-[#07194c]">Patients</h1>
           <p className="mt-2 text-[16px] font-medium text-[#68779f]">
             {records.length} imported tests - {pendingCount} pending metadata - {completedCount} completed
           </p>
         </div>
 
-        <label className="flex h-12 min-w-0 items-center gap-4 rounded-md border border-[#d7deea] bg-white px-5 shadow-sm focus-within:border-[#0647ff] focus-within:ring-4 focus-within:ring-blue-100">
+        <label className="flex h-12 min-w-0 items-center gap-4 rounded-md border border-[#d7deea] bg-[#f8fbff] px-5 shadow-sm focus-within:border-[#0647ff] focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
           <FiSearch aria-hidden="true" className="shrink-0 text-[#64749f]" size={21} />
           <input
             className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-[#07194c] outline-none placeholder:text-[#6f7fa6]"
@@ -241,7 +246,7 @@ export function PatientsPage() {
         <div className="flex flex-wrap gap-4 xl:justify-end">
           <div className="relative">
             <button
-              className="inline-flex h-12 min-w-[120px] items-center justify-center gap-3 rounded-md border border-[#d7deea] bg-white px-6 text-[16px] font-bold text-[#07194c] shadow-sm transition hover:bg-[#f6f8fb]"
+              className="inline-flex h-12 min-w-[120px] items-center justify-center gap-3 rounded-md border border-[#d7deea] bg-white px-6 text-[16px] font-bold text-[#07194c] shadow-sm transition hover:border-[#0647ff] hover:bg-[#eef4ff] hover:text-[#0647ff]"
               onClick={() => setIsFilterOpen((value) => !value)}
               type="button"
             >
@@ -265,7 +270,7 @@ export function PatientsPage() {
           </div>
 
           <button
-            className="inline-flex h-12 min-w-[150px] items-center justify-center gap-3 rounded-md bg-[#0647ff] px-6 text-[16px] font-bold text-white shadow-[0_10px_22px_rgba(6,71,255,0.24)] transition hover:bg-[#053ee0]"
+            className="inline-flex h-12 min-w-[150px] items-center justify-center gap-3 rounded-md bg-[#0647ff] px-6 text-[16px] font-bold text-white shadow-[0_14px_30px_rgba(6,71,255,0.28)] transition hover:bg-[#053ee0]"
             onClick={() => setIsImportPreviewOpen(true)}
             type="button"
           >
@@ -278,11 +283,12 @@ export function PatientsPage() {
           </button>
         </div>
       </div>
+      </div>
 
-      <section className="rounded-xl border border-[#e1e7f2] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
+      <section className="rounded-xl border border-[#dfe7f2] bg-white p-5 shadow-[0_16px_42px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
-            <div className="grid h-14 w-14 place-items-center rounded-xl bg-[#eef4ff] text-[#0647ff]">
+            <div className="grid h-14 w-14 place-items-center rounded-xl bg-[#eef4ff] text-[#0647ff] shadow-inner">
               <FiHardDrive aria-hidden="true" size={26} />
             </div>
             <div>
@@ -300,15 +306,15 @@ export function PatientsPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3 lg:min-w-[520px]">
-            <div className="rounded-lg bg-[#f8fbff] p-4">
+            <div className="rounded-lg border border-[#e7edf6] bg-[#f8fbff] p-4">
               <p className="text-xs font-bold uppercase text-[#68779f]">Status</p>
               <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbConnectionStatus}</p>
             </div>
-            <div className="rounded-lg bg-[#f8fbff] p-4">
+            <div className="rounded-lg border border-[#e7edf6] bg-[#f8fbff] p-4">
               <p className="text-xs font-bold uppercase text-[#68779f]">TXT Files Found</p>
               <p className="mt-2 text-base font-extrabold text-[#07194c]">{displayedTxtFilesFound}</p>
             </div>
-            <div className="rounded-lg bg-[#f8fbff] p-4">
+            <div className="rounded-lg border border-[#e7edf6] bg-[#f8fbff] p-4">
               <p className="text-xs font-bold uppercase text-[#68779f]">Drive</p>
               <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbDriveLetter}</p>
             </div>
@@ -317,7 +323,7 @@ export function PatientsPage() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-[#e1e7f2] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
+        <div className="rounded-lg border border-[#dfe7f2] bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3">
             <FiFileText aria-hidden="true" className="text-[#0647ff]" size={22} />
             <p className="text-sm font-bold text-[#68779f]">Today&apos;s Imports</p>
@@ -325,7 +331,7 @@ export function PatientsPage() {
           <p className="mt-3 text-3xl font-extrabold text-[#07194c]">{records.length}</p>
           <p className="mt-1 text-sm font-medium text-[#68779f]">Imported into temporary queue</p>
         </div>
-        <div className="rounded-lg border border-[#e1e7f2] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
+        <div className="rounded-lg border border-[#dfe7f2] bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3">
             <FiDatabase aria-hidden="true" className="text-[#d97706]" size={22} />
             <p className="text-sm font-bold text-[#68779f]">Pending Metadata</p>
@@ -333,7 +339,7 @@ export function PatientsPage() {
           <p className="mt-3 text-3xl font-extrabold text-[#d97706]">{pendingCount}</p>
           <p className="mt-1 text-sm font-medium text-[#68779f]">Records waiting for completion</p>
         </div>
-        <div className="rounded-lg border border-[#e1e7f2] bg-white p-5 shadow-[0_10px_26px_rgba(15,23,42,0.04)]">
+        <div className="rounded-lg border border-[#dfe7f2] bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3">
             <FiCheckCircle aria-hidden="true" className="text-[#059669]" size={22} />
             <p className="text-sm font-bold text-[#68779f]">Completed Records</p>
