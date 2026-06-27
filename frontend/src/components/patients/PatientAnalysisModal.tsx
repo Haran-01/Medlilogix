@@ -8,6 +8,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import medilogixLogo from '../../assets/medilogix-logo.png';
+import { useAuth } from '../../contexts/AuthContext';
 import type { PatientTestRecord } from '../../types/patientTest';
 import { formatNumber } from '../../utils/format';
 import { Button } from '../common/Button';
@@ -37,9 +39,19 @@ function getMinimum(record: PatientTestRecord) {
 }
 
 export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysisModalProps) {
+  const { doctor } = useAuth();
+
   if (!record) {
     return null;
   }
+
+  const hospitalLogo = doctor?.hospitalLogoUrl || medilogixLogo;
+  const patientDetails = [
+    { label: 'Patient ID', value: record.id },
+    { label: 'Patient Name', value: record.patientName || 'Metadata pending' },
+    { label: 'Test Date', value: record.testDate },
+    { label: 'Case History', value: record.caseHistory || 'Metadata pending' },
+  ];
 
   const statCards = [
     { label: 'Peak PSI', value: `${record.peakPsi.toFixed(1)} PSI` },
@@ -52,18 +64,19 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl" title="Pressure Analysis">
       <div className="space-y-6">
-        <div className="grid gap-4 rounded-xl border border-[#e7ebf3] bg-[#f8fbff] p-4 sm:grid-cols-3">
-          <div>
-            <p className="text-xs font-bold uppercase text-[#68779f]">Patient ID</p>
-            <p className="mt-1 text-lg font-extrabold text-[#07194c]">{record.id}</p>
+        <div className="flex items-center justify-between gap-8 rounded-lg border border-[#e7ebf3] bg-[#f8fbff] px-4 py-3">
+          <div className="grid min-w-0 max-w-[760px] flex-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+            {patientDetails.map((detail) => (
+              <div className="min-w-0" key={detail.label}>
+                <p className="text-[10px] font-extrabold uppercase tracking-normal text-[#68779f]">{detail.label}</p>
+                <p className="mt-0.5 truncate text-sm font-extrabold text-[#07194c]">{detail.value}</p>
+              </div>
+            ))}
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase text-[#68779f]">Patient Name</p>
-            <p className="mt-1 text-lg font-extrabold text-[#07194c]">{record.patientName || 'Metadata pending'}</p>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase text-[#68779f]">Test Date</p>
-            <p className="mt-1 text-lg font-extrabold text-[#07194c]">{record.testDate}</p>
+          <div className="ml-auto flex min-w-[220px] justify-end border-l border-[#dfe7f2] pl-8">
+            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-lg border border-[#dfe7f2] bg-white p-3 shadow-sm">
+              <img alt={`${doctor?.name ?? 'Hospital'} logo`} className="max-h-14 max-w-14 object-contain" src={hospitalLogo} />
+            </div>
           </div>
         </div>
 

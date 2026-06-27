@@ -13,6 +13,7 @@ export interface PatientTestRecord {
   patientName: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   age: string;
+  caseHistory: string;
   description: string;
   testDate: string;
   testDuration: string;
@@ -31,5 +32,6 @@ export interface PatientMetadataFormValues {
   patientName: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   age: string;
+  caseHistory: string;
   description: string;
 }

@@ -4,6 +4,8 @@ import { hashPassword, verifyPassword } from './Auth';
 export interface DoctorRecord {
   createdAt: string;
   email: string;
+  hospitalLogoPath: string;
+  hospitalLogoUrl: string;
   id: string;
   name: string;
   phoneNumber: string;
@@ -18,6 +20,8 @@ export interface DoctorAuthRecord extends DoctorRecord {
 interface DoctorRow {
   created_at: string;
   email: string;
+  hospital_logo_path?: string;
+  hospital_logo_url?: string;
   id: string;
   name: string;
   password_hash: string;
@@ -29,6 +33,7 @@ interface DoctorRow {
 interface PatientTestRow {
   age: number;
   average_psi: number;
+  case_history: string;
   description: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   id: string;
@@ -52,6 +57,7 @@ interface SampleRow {
 export interface PatientTestInput {
   age: string;
   averagePsi: number;
+  caseHistory: string;
   description: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   id: string;
@@ -68,6 +74,7 @@ export interface PatientTestInput {
 
 export interface PatientTestMetadataInput {
   age: string;
+  caseHistory: string;
   description: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   patientName: string;
@@ -75,6 +82,11 @@ export interface PatientTestMetadataInput {
 
 export interface RegisterDoctorInput {
   gmail: string;
+  hospitalLogo: {
+    base64: string;
+    fileName: string;
+    mimeType: string;
+  };
   name: string;
   password: string;
   phoneNumber: string;
@@ -84,6 +96,7 @@ export interface RegisterDoctorInput {
 export interface PatientTestRecord {
   age: string;
   averagePsi: number;
+  caseHistory: string;
   description: string;
   gender: '' | 'Female' | 'Male' | 'Other';
   id: string;
@@ -180,74 +193,30 @@ export class MedilogixDatabase {
   }
 
   async createPatientTest(doctorId: string, input: PatientTestInput) {
-    const existingRecord = await this.request<Array<{ id: string }>>('patient_test_records', {
-      query: {
-        limit: '1',
-        patient_file_id: `eq.${input.id}`,
-        select: 'id',
-      },
-    });
-
-    if (existingRecord.length > 0) {
-      throw new Error(`Patient ID ${input.id} already exists. Duplicate patient IDs are not allowed.`);
-    }
-
     const recordId = crypto.randomUUID();
     const savedAt = new Date().toISOString();
-    let record: PatientTestRow;
-
-    try {
-      [record] = await this.request<PatientTestRow[]>('patient_test_records', {
-        body: {
-          age: Number(input.age),
-          average_psi: input.averagePsi,
-          description: input.description,
-          doctor_id: doctorId,
-          gender: input.gender,
-          id: recordId,
-          imported_at: input.importedAt,
-          minimum_psi: input.minimumPsi,
-          patient_file_id: input.id,
-          patient_name: input.patientName,
-          peak_psi: input.peakPsi,
-          sample_count: input.samples.length,
-          saved_at: savedAt,
-          source_file_name: input.sourceFileName ?? null,
-          test_date: input.testDate,
-          test_duration: input.testDuration,
-        },
-        method: 'POST',
-        prefer: 'return=representation',
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-
-      if (message.includes('duplicate key') || message.includes('23505')) {
-        throw new Error(`Patient ID ${input.id} already exists. Duplicate patient IDs are not allowed.`);
-      }
-
-      throw error;
-    }
-
-    try {
-      await this.request('patient_test_samples', {
-        body: input.samples.map((sample, index) => ({
-          psi: sample.psi,
-          record_id: recordId,
-          sample_order: index,
-          timestamp: sample.timestamp ?? sample.time,
-        })),
-        method: 'POST',
-      });
-    } catch (error) {
-      await this.request('patient_test_records', {
-        method: 'DELETE',
-        query: {
-          id: `eq.${recordId}`,
-        },
-      }).catch(() => undefined);
-      throw error;
-    }
+    const record = await this.rpc<PatientTestRow>('save_patient_test', {
+      p_age: Number(input.age),
+      p_average_psi: input.averagePsi,
+      p_case_history: input.caseHistory,
+      p_description: input.description,
+      p_doctor_id: doctorId,
+      p_gender: input.gender,
+      p_id: recordId,
+      p_imported_at: input.importedAt,
+      p_minimum_psi: input.minimumPsi,
+      p_patient_file_id: input.id,
+      p_patient_name: input.patientName,
+      p_peak_psi: input.peakPsi,
+      p_samples: input.samples.map((sample) => ({
+        psi: sample.psi,
+        timestamp: sample.timestamp ?? sample.time,
+      })),
+      p_saved_at: savedAt,
+      p_source_file_name: input.sourceFileName ?? null,
+      p_test_date: input.testDate,
+      p_test_duration: input.testDuration,
+    });
 
     return this.mapPatientTest(record);
   }
@@ -260,12 +229,16 @@ export class MedilogixDatabase {
     }
 
     const credentials = hashPassword(input.password);
+    const doctorId = crypto.randomUUID();
+    const hospitalLogoPath = await this.uploadHospitalLogo(doctorId, input.hospitalLogo);
     const [row] = await this.request<DoctorRow[]>('doctors', {
       body: {
         created_at: new Date().toISOString(),
         email: input.gmail,
-        id: crypto.randomUUID(),
+        id: doctorId,
         name: input.name,
+        hospital_logo_path: hospitalLogoPath,
+        hospital_logo_url: '',
         password_hash: credentials.hash,
         password_salt: credentials.salt,
         phone_number: input.phoneNumber,
@@ -310,6 +283,7 @@ export class MedilogixDatabase {
     const rows = await this.request<PatientTestRow[]>('patient_test_records', {
       body: {
         age: Number(input.age),
+        case_history: input.caseHistory,
         description: input.description,
         gender: input.gender,
         patient_name: input.patientName,
@@ -348,6 +322,8 @@ export class MedilogixDatabase {
         email,
         id: crypto.randomUUID(),
         name,
+        hospital_logo_path: '',
+        hospital_logo_url: '',
         password_hash: credentials.hash,
         password_salt: credentials.salt,
         phone_number: '',
@@ -369,6 +345,7 @@ export class MedilogixDatabase {
     return {
       age: String(row.age),
       averagePsi: row.average_psi,
+      caseHistory: row.case_history ?? '',
       description: row.description,
       gender: row.gender,
       id: row.patient_file_id,
@@ -391,10 +368,14 @@ export class MedilogixDatabase {
     };
   }
 
-  private mapDoctor(row: DoctorRow): DoctorRecord {
+  private async mapDoctor(row: DoctorRow): Promise<DoctorRecord> {
+    const logoPath = row.hospital_logo_path ?? '';
+
     return {
       createdAt: row.created_at,
       email: row.email,
+      hospitalLogoPath: logoPath,
+      hospitalLogoUrl: logoPath ? await this.createHospitalLogoSignedUrl(logoPath) : row.hospital_logo_url ?? '',
       id: row.id,
       name: row.name,
       phoneNumber: row.phone_number ?? '',
@@ -402,12 +383,77 @@ export class MedilogixDatabase {
     };
   }
 
-  private mapDoctorAuth(row: DoctorRow): DoctorAuthRecord {
+  private async mapDoctorAuth(row: DoctorRow): Promise<DoctorAuthRecord> {
     return {
-      ...this.mapDoctor(row),
+      ...(await this.mapDoctor(row)),
       passwordHash: row.password_hash,
       passwordSalt: row.password_salt,
     };
+  }
+
+  private async createHospitalLogoSignedUrl(path: string) {
+    const normalizedPath = path.replace(/^\/+/, '');
+    const response = await fetch(`${this.supabaseUrl}/storage/v1/object/sign/hospital-logos/${normalizedPath}`, {
+      body: JSON.stringify({ expiresIn: 60 * 60 }),
+      headers: {
+        apikey: this.anonKey,
+        Authorization: `Bearer ${this.serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      return '';
+    }
+
+    const payload = await response.json() as { signedURL?: string; signedUrl?: string };
+    const signedPath = payload.signedURL ?? payload.signedUrl ?? '';
+
+    if (!signedPath) {
+      return '';
+    }
+
+    return signedPath.startsWith('http') ? signedPath : `${this.supabaseUrl}/storage/v1${signedPath}`;
+  }
+
+  private async uploadHospitalLogo(doctorId: string, logo: RegisterDoctorInput['hospitalLogo']) {
+    const extensionByType: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/svg+xml': 'svg',
+      'image/webp': 'webp',
+    };
+    const extension = extensionByType[logo.mimeType];
+
+    if (!extension) {
+      throw new Error('Hospital logo must be PNG, JPG, WEBP, or SVG');
+    }
+
+    const fileBuffer = Buffer.from(logo.base64, 'base64');
+
+    if (fileBuffer.length === 0 || fileBuffer.length > 1024 * 1024) {
+      throw new Error('Hospital logo must be 1 MB or smaller');
+    }
+
+    const storagePath = `${doctorId}/logo.${extension}`;
+    const response = await fetch(`${this.supabaseUrl}/storage/v1/object/hospital-logos/${storagePath}`, {
+      body: fileBuffer,
+      headers: {
+        apikey: this.anonKey,
+        Authorization: `Bearer ${this.serviceRoleKey}`,
+        'Content-Type': logo.mimeType,
+        'x-upsert': 'true',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Hospital logo upload failed: ${details}`);
+    }
+
+    return storagePath;
   }
 
   private async request<T = unknown>(
@@ -450,4 +496,29 @@ export class MedilogixDatabase {
     return JSON.parse(responseText) as T;
   }
 
+  private async rpc<T = unknown>(functionName: string, body: unknown): Promise<T> {
+    const url = `${this.supabaseUrl}/rest/v1/rpc/${functionName}`;
+    const response = await fetch(url, {
+      body: JSON.stringify(body),
+      headers: {
+        apikey: this.anonKey,
+        Authorization: `Bearer ${this.serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Supabase RPC failed: ${response.status} ${details}`);
+    }
+
+    const responseText = await response.text();
+
+    if (!responseText) {
+      return undefined as T;
+    }
+
+    return JSON.parse(responseText) as T;
+  }
 }

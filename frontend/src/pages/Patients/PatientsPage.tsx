@@ -16,11 +16,11 @@ import { PatientAnalysisModal } from '../../components/patients/PatientAnalysisM
 import { PatientMetadataModal } from '../../components/patients/PatientMetadataModal';
 import { PatientTable } from '../../components/patients/PatientTable';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { createPatientTest, getPatientTests } from '../../services/patientTests.service';
+import { createPatientTest, getPatientTests, updatePatientTestMetadata } from '../../services/patientTests.service';
 import type { PatientMetadataFormValues, PatientTestRecord } from '../../types/patientTest';
 
 function isCompleted(values: PatientMetadataFormValues) {
-  return Boolean(values.patientName && values.gender && values.age && values.description);
+  return Boolean(values.patientName && values.gender && values.age && values.caseHistory && values.description);
 }
 
 type UsbImportState =
@@ -147,11 +147,13 @@ export function PatientsPage() {
     }
 
     try {
-      const savedRecord = await createPatientTest({
-        ...editingRecord,
-        ...values,
-        status: 'Completed',
-      });
+      const savedRecord = editingRecord.recordId
+        ? await updatePatientTestMetadata(editingRecord.recordId, values)
+        : await createPatientTest({
+            ...editingRecord,
+            ...values,
+            status: 'Completed',
+          });
       const editingKey = editingRecord.recordKey ?? editingRecord.recordId ?? editingRecord.id;
 
       setRecords((currentRecords) =>
@@ -193,10 +195,7 @@ export function PatientsPage() {
         })),
       }));
 
-      setRecords((currentRecords) => [
-        ...importedRecords,
-        ...currentRecords.filter((record) => record.status === 'Completed'),
-      ]);
+      setRecords((currentRecords) => [...importedRecords, ...currentRecords]);
 
       if (result.records.length > 0) {
         pushToast(`${result.records.length} files imported successfully.`, 'success');

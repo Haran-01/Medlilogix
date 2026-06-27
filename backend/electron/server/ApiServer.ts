@@ -1,7 +1,13 @@
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createToken, verifyPassword, verifyToken } from './Auth';
-import { MedilogixDatabase, type DoctorRecord, type PatientTestInput, type RegisterDoctorInput } from './Database';
+import {
+  MedilogixDatabase,
+  type DoctorRecord,
+  type PatientTestInput,
+  type PatientTestMetadataInput,
+  type RegisterDoctorInput,
+} from './Database';
 
 interface RequestContext {
   body: unknown;
@@ -12,7 +18,9 @@ interface RequestContext {
 }
 
 const allowedGenders = new Set(['Female', 'Male', 'Other']);
+const allowedLogoTypes = new Set(['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp']);
 const maxBodyBytes = 10 * 1024 * 1024;
+const maxLogoBytes = 1024 * 1024;
 
 export class MedilogixApiServer {
   private database: MedilogixDatabase;
@@ -155,6 +163,11 @@ export class MedilogixApiServer {
       return;
     }
 
+    if (method === 'PATCH' && recordMatch) {
+      await this.updatePatientTest(context, decodeURIComponent(recordMatch[1]));
+      return;
+    }
+
     this.sendJson(response, 404, { message: 'Route not found' });
   }
 
@@ -251,6 +264,30 @@ export class MedilogixApiServer {
     this.sendJson(response, 201, { record });
   }
 
+  private async updatePatientTest(context: RequestContext, recordId: string) {
+    const { doctor, response } = context;
+    const validation = this.validatePatientMetadata(context.body);
+
+    if (!doctor) {
+      this.sendJson(response, 401, { message: 'Authentication required' });
+      return;
+    }
+
+    if (!validation.ok) {
+      this.sendJson(response, 422, { message: validation.message });
+      return;
+    }
+
+    const record = await this.database.updatePatientTestMetadata(recordId, doctor.id, validation.value);
+
+    if (!record) {
+      this.sendJson(response, 404, { message: 'Record not found' });
+      return;
+    }
+
+    this.sendJson(response, 200, { record });
+  }
+
   private async authenticate(request: IncomingMessage) {
     const header = request.headers.authorization;
 
@@ -277,6 +314,7 @@ export class MedilogixApiServer {
 
     const requiredTextFields: Array<keyof PatientTestInput> = [
       'age',
+      'caseHistory',
       'description',
       'id',
       'importedAt',
@@ -328,6 +366,7 @@ export class MedilogixApiServer {
       value: {
         age: value.age.trim(),
         averagePsi: value.averagePsi,
+        caseHistory: value.caseHistory.trim(),
         description: value.description.trim(),
         gender: value.gender,
         id: value.id.trim(),
@@ -344,6 +383,43 @@ export class MedilogixApiServer {
     };
   }
 
+  private validatePatientMetadata(body: unknown): { ok: true; value: PatientTestMetadataInput } | { message: string; ok: false } {
+    const value = body as Partial<PatientTestMetadataInput> | null;
+
+    if (!value || typeof value !== 'object') {
+      return { ok: false, message: 'Patient metadata is required' };
+    }
+
+    const patientName = typeof value.patientName === 'string' ? value.patientName.trim() : '';
+    const gender = typeof value.gender === 'string' ? value.gender : '';
+    const age = typeof value.age === 'string' ? value.age.trim() : '';
+    const caseHistory = typeof value.caseHistory === 'string' ? value.caseHistory.trim() : '';
+    const description = typeof value.description === 'string' ? value.description.trim() : '';
+
+    if (!patientName || !gender || !age || !caseHistory || !description) {
+      return { ok: false, message: 'Complete every metadata field before saving' };
+    }
+
+    if (!allowedGenders.has(gender)) {
+      return { ok: false, message: 'gender is required before saving' };
+    }
+
+    if (!Number.isInteger(Number(age)) || Number(age) <= 0) {
+      return { ok: false, message: 'age must be a positive number' };
+    }
+
+    return {
+      ok: true,
+      value: {
+        age,
+        caseHistory,
+        description,
+        gender: gender as PatientTestMetadataInput['gender'],
+        patientName,
+      },
+    };
+  }
+
   private validateRegistration(body: unknown): { ok: true; value: RegisterDoctorInput } | { message: string; ok: false } {
     const value = body as Partial<RegisterDoctorInput> | null;
 
@@ -355,9 +431,10 @@ export class MedilogixApiServer {
     const phoneNumber = typeof value.phoneNumber === 'string' ? value.phoneNumber.trim() : '';
     const serialNumber = typeof value.serialNumber === 'string' ? value.serialNumber.trim().toUpperCase() : '';
     const gmail = typeof value.gmail === 'string' ? value.gmail.trim().toLowerCase() : '';
+    const hospitalLogo = typeof value.hospitalLogo === 'object' && value.hospitalLogo ? value.hospitalLogo : null;
     const password = typeof value.password === 'string' ? value.password : '';
 
-    if (!name || !phoneNumber || !serialNumber || !gmail || !password) {
+    if (!name || !phoneNumber || !serialNumber || !gmail || !password || !hospitalLogo) {
       return { ok: false, message: 'Complete every sign-up field' };
     }
 
@@ -373,10 +450,30 @@ export class MedilogixApiServer {
       return { ok: false, message: 'Password must be at least 8 characters' };
     }
 
+    const logo = hospitalLogo as Partial<RegisterDoctorInput['hospitalLogo']>;
+    const logoBase64 = typeof logo.base64 === 'string' ? logo.base64 : '';
+    const logoFileName = typeof logo.fileName === 'string' ? logo.fileName.trim() : '';
+    const logoMimeType = typeof logo.mimeType === 'string' ? logo.mimeType.trim() : '';
+
+    if (!logoBase64 || !logoFileName || !allowedLogoTypes.has(logoMimeType)) {
+      return { ok: false, message: 'Hospital logo must be PNG, JPG, WEBP, or SVG' };
+    }
+
+    const logoBytes = Buffer.byteLength(logoBase64, 'base64');
+
+    if (logoBytes === 0 || logoBytes > maxLogoBytes) {
+      return { ok: false, message: 'Hospital logo must be 1 MB or smaller' };
+    }
+
     return {
       ok: true,
       value: {
         gmail,
+        hospitalLogo: {
+          base64: logoBase64,
+          fileName: logoFileName,
+          mimeType: logoMimeType,
+        },
         name,
         password,
         phoneNumber,

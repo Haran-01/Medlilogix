@@ -8,7 +8,7 @@ interface PatientTableProps {
   records: PatientTestRecord[];
 }
 
-const columns = ['Patient ID', 'Patient Name', 'Test Date', 'Test Duration', 'Peak PSI', 'Status', 'Actions'];
+const columns = ['Patient ID', 'Patient Name', 'Case History', 'Test Date', 'Test Duration', 'Peak PSI', 'Status', 'Actions'];
 
 function SortIcon() {
   return (
@@ -52,7 +52,7 @@ export function PatientTable({ onEditMetadata, onViewAnalysis, records }: Patien
   return (
     <section className="overflow-hidden rounded-xl border border-[#dfe7f2] bg-white shadow-[0_18px_48px_rgba(15,23,42,0.08)]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1160px] text-left text-[15px] text-[#07194c]">
+        <table className="w-full min-w-[1280px] text-left text-[15px] text-[#07194c]">
           <thead className="bg-[#f7faff]">
             <tr>
               {columns.map((column) => (
@@ -81,6 +81,9 @@ export function PatientTable({ onEditMetadata, onViewAnalysis, records }: Patien
                 </td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">
                   {record.patientName || <span className="text-[#8a97bc]">Pending metadata</span>}
+                </td>
+                <td className="h-16 whitespace-nowrap px-6 font-medium">
+                  {record.caseHistory || <span className="text-[#8a97bc]">Pending</span>}
                 </td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">{record.testDate}</td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">{record.testDuration}</td>

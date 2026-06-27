@@ -6,6 +6,8 @@ create table if not exists public.doctors (
   email text not null unique,
   phone_number text not null default '',
   serial_number text not null default '',
+  hospital_logo_url text not null default '',
+  hospital_logo_path text not null default '',
   password_hash text not null,
   password_salt text not null,
   created_at timestamptz not null default now()
@@ -13,7 +15,23 @@ create table if not exists public.doctors (
 
 alter table public.doctors
   add column if not exists phone_number text not null default '',
-  add column if not exists serial_number text not null default '';
+  add column if not exists serial_number text not null default '',
+  add column if not exists hospital_logo_url text not null default '',
+  add column if not exists hospital_logo_path text not null default '';
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'hospital-logos',
+  'hospital-logos',
+  false,
+  1048576,
+  array['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create table if not exists public.patient_test_records (
   id uuid primary key default gen_random_uuid(),
@@ -22,6 +40,7 @@ create table if not exists public.patient_test_records (
   patient_name text not null,
   gender text not null check (gender in ('Female', 'Male', 'Other')),
   age integer not null check (age > 0),
+  case_history text not null default '',
   description text not null,
   test_date text not null,
   test_duration text not null,
@@ -34,44 +53,12 @@ create table if not exists public.patient_test_records (
   source_file_name text
 );
 
-do $$
-begin
-  if not exists (
-    select 1
-    from public.patient_test_records
-    group by patient_file_id
-    having count(*) > 1
-  ) then
-    create unique index if not exists idx_patient_test_records_patient_file_id_unique
-      on public.patient_test_records(patient_file_id);
-  end if;
-end;
-$$;
-
-create or replace function public.prevent_duplicate_patient_file_id()
-returns trigger
-language plpgsql
-as $$
-begin
-  if exists (
-    select 1
-    from public.patient_test_records
-    where patient_file_id = new.patient_file_id
-      and id <> new.id
-  ) then
-    raise exception 'Patient ID % already exists. Duplicate patient IDs are not allowed.', new.patient_file_id
-      using errcode = '23505';
-  end if;
-
-  return new;
-end;
-$$;
+alter table public.patient_test_records
+  add column if not exists case_history text not null default '';
 
 drop trigger if exists trg_prevent_duplicate_patient_file_id on public.patient_test_records;
-
-create trigger trg_prevent_duplicate_patient_file_id
-before insert or update of patient_file_id on public.patient_test_records
-for each row execute function public.prevent_duplicate_patient_file_id();
+drop function if exists public.prevent_duplicate_patient_file_id();
+drop index if exists public.idx_patient_test_records_patient_file_id_unique;
 
 create table if not exists public.patient_test_samples (
   id bigint generated always as identity primary key,
@@ -98,6 +85,7 @@ create or replace function public.save_patient_test(
   p_patient_name text,
   p_gender text,
   p_age integer,
+  p_case_history text,
   p_description text,
   p_test_date text,
   p_test_duration text,
@@ -122,6 +110,7 @@ begin
     patient_name,
     gender,
     age,
+    case_history,
     description,
     test_date,
     test_duration,
@@ -140,6 +129,7 @@ begin
     p_patient_name,
     p_gender,
     p_age,
+    p_case_history,
     p_description,
     p_test_date,
     p_test_duration,

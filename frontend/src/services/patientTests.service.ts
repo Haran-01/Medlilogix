@@ -35,3 +35,13 @@ export async function createPatientTest(record: PatientTestRecord) {
     throw new Error(getApiErrorMessage(error), { cause: error });
   }
 }
+
+export async function updatePatientTestMetadata(recordId: string, values: Pick<PatientTestRecord, 'age' | 'caseHistory' | 'description' | 'gender' | 'patientName'>) {
+  try {
+    const response = await apiClient.patch<{ record: PatientTestRecord }>(`/patient-tests/${encodeURIComponent(recordId)}`, values);
+
+    return response.data.record;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error), { cause: error });
+  }
+}

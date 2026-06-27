@@ -21,6 +21,7 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
   } = useForm<PatientMetadataFormValues>({
     defaultValues: {
       age: '',
+      caseHistory: '',
       description: '',
       gender: '',
       patientName: '',
@@ -31,6 +32,7 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
     if (record) {
       reset({
         age: record.age,
+        caseHistory: record.caseHistory,
         description: record.description,
         gender: record.gender,
         patientName: record.patientName,
@@ -101,19 +103,31 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
           </label>
         </div>
 
-        <label className="block">
-          <span className="text-sm font-bold text-[#07194c]">Age</span>
-          <input
-            className="mt-2 h-11 w-full rounded-lg border border-[#d7deea] bg-white px-3 text-sm text-[#07194c] outline-none focus:border-[#0647ff] focus:ring-4 focus:ring-blue-100"
-            placeholder="Enter age"
-            type="number"
-            {...register('age', {
-              required: 'Age is required',
-              min: { value: 1, message: 'Age must be at least 1' },
-            })}
-          />
-          {errors.age ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.age.message}</p> : null}
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-bold text-[#07194c]">Age</span>
+            <input
+              className="mt-2 h-11 w-full rounded-lg border border-[#d7deea] bg-white px-3 text-sm text-[#07194c] outline-none focus:border-[#0647ff] focus:ring-4 focus:ring-blue-100"
+              placeholder="Enter age"
+              type="number"
+              {...register('age', {
+                required: 'Age is required',
+                min: { value: 1, message: 'Age must be at least 1' },
+              })}
+            />
+            {errors.age ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.age.message}</p> : null}
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-bold text-[#07194c]">Case History</span>
+            <input
+              className="mt-2 h-11 w-full rounded-lg border border-[#d7deea] bg-white px-3 text-sm text-[#07194c] outline-none focus:border-[#0647ff] focus:ring-4 focus:ring-blue-100"
+              placeholder="e.g. Thyroid"
+              {...register('caseHistory', { required: 'Case history is required' })}
+            />
+            {errors.caseHistory ? <p className="mt-1 text-xs font-semibold text-rose-600">{errors.caseHistory.message}</p> : null}
+          </label>
+        </div>
 
         <label className="block">
           <span className="text-sm font-bold text-[#07194c]">Description</span>

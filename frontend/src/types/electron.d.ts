@@ -21,6 +21,7 @@ interface PatientImportRecord {
   patientName: '';
   gender: '';
   age: '';
+  caseHistory: '';
   description: '';
   testDate: string;
   testDuration: string;

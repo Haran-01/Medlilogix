@@ -43,6 +43,7 @@ export function parseTxtFile(filePath: string, content: string): PatientImportRe
     patientName: '',
     gender: '',
     age: '',
+    caseHistory: '',
     description: '',
     testDate,
     testDuration: statistics.testDuration,
