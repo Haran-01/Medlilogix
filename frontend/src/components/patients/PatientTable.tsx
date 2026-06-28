@@ -3,6 +3,7 @@ import type { PatientTestRecord } from '../../types/patientTest';
 import { cn } from '../../utils/cn';
 
 interface PatientTableProps {
+  isSearchActive?: boolean;
   onEditMetadata: (record: PatientTestRecord) => void;
   onViewAnalysis: (record: PatientTestRecord) => void;
   records: PatientTestRecord[];
@@ -34,16 +35,20 @@ function StatusBadge({ status }: { status: PatientTestRecord['status'] }) {
   );
 }
 
-export function PatientTable({ onEditMetadata, onViewAnalysis, records }: PatientTableProps) {
+export function PatientTable({ isSearchActive = false, onEditMetadata, onViewAnalysis, records }: PatientTableProps) {
   if (records.length === 0) {
     return (
       <section className="rounded-xl border border-[#dfe7f2] bg-white px-6 py-14 text-center shadow-[0_16px_42px_rgba(15,23,42,0.06)]">
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-[#eef4ff] text-[#0647ff] shadow-inner">
           <FiFileText aria-hidden="true" size={36} />
         </div>
-        <h2 className="mt-6 text-2xl font-extrabold tracking-normal text-[#07194c]">No Patient Records Found</h2>
+        <h2 className="mt-6 text-2xl font-extrabold tracking-normal text-[#07194c]">
+          {isSearchActive ? 'No Matching Patient Records' : 'No Patient Records Found'}
+        </h2>
         <p className="mx-auto mt-3 max-w-md text-base font-medium leading-7 text-[#68779f]">
-          Connect the laboratory device and import patient test files to begin.
+          {isSearchActive
+            ? 'Try another patient ID, name, test date, case history, status, or age.'
+            : 'Connect the laboratory device and import patient test files to begin.'}
         </p>
       </section>
     );
@@ -80,7 +85,7 @@ export function PatientTable({ onEditMetadata, onViewAnalysis, records }: Patien
                   </span>
                 </td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">
-                  {record.patientName || <span className="text-[#8a97bc]">Pending metadata</span>}
+                  {record.patientName || <span className="text-[#8a97bc]">Patient&apos;s Info pending</span>}
                 </td>
                 <td className="h-16 whitespace-nowrap px-6 font-medium">
                   {record.caseHistory || <span className="text-[#8a97bc]">Pending</span>}
@@ -94,14 +99,14 @@ export function PatientTable({ onEditMetadata, onViewAnalysis, records }: Patien
                 <td className="h-16 whitespace-nowrap px-6">
                   <div className="flex justify-end gap-2">
                     <button
-                      aria-label={`Edit metadata for patient ${record.id}`}
+                      aria-label={`Edit Patient's Info for patient ${record.id}`}
                       className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d7deea] bg-white px-3 text-sm font-bold text-[#07194c] shadow-sm transition hover:border-[#0647ff] hover:bg-[#eef4ff] hover:text-[#0647ff]"
                       onClick={() => onEditMetadata(record)}
-                      title="Edit Metadata"
+                      title="Edit Patient's Info"
                       type="button"
                     >
                       <FiEdit3 aria-hidden="true" size={16} />
-                      <span>Edit Metadata</span>
+                      <span>Edit Patient&apos;s Info</span>
                     </button>
                     <button
                       aria-label={`View analysis for patient ${record.id}`}

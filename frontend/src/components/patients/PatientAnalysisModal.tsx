@@ -48,9 +48,9 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
   const hospitalLogo = doctor?.hospitalLogoUrl || medilogixLogo;
   const patientDetails = [
     { label: 'Patient ID', value: record.id },
-    { label: 'Patient Name', value: record.patientName || 'Metadata pending' },
+    { label: 'Patient Name', value: record.patientName || "Patient's Info pending" },
     { label: 'Test Date', value: record.testDate },
-    { label: 'Case History', value: record.caseHistory || 'Metadata pending' },
+    { label: 'Case History', value: record.caseHistory || "Patient's Info pending" },
   ];
 
   const statCards = [

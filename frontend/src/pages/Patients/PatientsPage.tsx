@@ -50,13 +50,31 @@ const filterOptions = [
   'Oldest First',
   'Highest Peak PSI',
   'Lowest Peak PSI',
-];
+] as const;
+
+type RecordFilter = (typeof filterOptions)[number];
+
+function getRecordTime(record: PatientTestRecord) {
+  const dateParts = record.testDate.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/);
+
+  if (dateParts) {
+    const [, day, month, year] = dateParts;
+    const fullYear = year.length === 2 ? 2000 + Number(year) : Number(year);
+    return new Date(fullYear, Number(month) - 1, Number(day)).getTime();
+  }
+
+  const testDateTime = Date.parse(record.testDate);
+  const importedTime = Date.parse(record.importedAt);
+  return Number.isNaN(testDateTime) ? (Number.isNaN(importedTime) ? 0 : importedTime) : testDateTime;
+}
 
 export function PatientsPage() {
   usePageTitle('Patients');
   const [records, setRecords] = useState<PatientTestRecord[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingRecord, setEditingRecord] = useState<PatientTestRecord | null>(null);
   const [analysisRecord, setAnalysisRecord] = useState<PatientTestRecord | null>(null);
+  const [activeFilter, setActiveFilter] = useState<RecordFilter>('All Records');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [isImportProgressOpen, setIsImportProgressOpen] = useState(false);
@@ -80,6 +98,38 @@ export function PatientsPage() {
 
   const pendingCount = useMemo(() => records.filter((record) => record.status === 'Pending').length, [records]);
   const completedCount = records.length - pendingCount;
+  const filteredRecords = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+
+    const searchedRecords = normalizedQuery
+      ? records.filter((record) =>
+      [record.id, record.patientName, record.testDate, record.caseHistory, record.description, record.status, record.age]
+        .map((value) => String(value ?? '').toLocaleLowerCase())
+        .some((value) => value.includes(normalizedQuery)),
+      )
+      : records;
+
+    if (activeFilter === 'Completed' || activeFilter === 'Pending') {
+      return searchedRecords.filter((record) => record.status === activeFilter);
+    }
+
+    const sortedRecords = [...searchedRecords];
+
+    if (activeFilter === 'Newest First') {
+      return sortedRecords.sort((left, right) => getRecordTime(right) - getRecordTime(left));
+    }
+    if (activeFilter === 'Oldest First') {
+      return sortedRecords.sort((left, right) => getRecordTime(left) - getRecordTime(right));
+    }
+    if (activeFilter === 'Highest Peak PSI') {
+      return sortedRecords.sort((left, right) => right.peakPsi - left.peakPsi);
+    }
+    if (activeFilter === 'Lowest Peak PSI') {
+      return sortedRecords.sort((left, right) => left.peakPsi - right.peakPsi);
+    }
+
+    return searchedRecords;
+  }, [activeFilter, records, searchQuery]);
   const usbState: UsbImportState = usbStatus.connected ? 'Ready to Import' : 'No USB Connected';
   const usbDeviceName = usbStatus.device?.deviceName ?? 'No USB Connected';
   const usbDriveLetter = usbStatus.device?.driveLetter ?? '-';
@@ -142,7 +192,7 @@ export function PatientsPage() {
     }
 
     if (!isCompleted(values)) {
-      pushToast('Complete all metadata fields before saving', 'warning');
+      pushToast("Complete all Patient's Info fields before saving", 'warning');
       return false;
     }
 
@@ -229,16 +279,19 @@ export function PatientsPage() {
           <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#059669]">Patient workspace</p>
           <h1 className="mt-1 text-[28px] font-extrabold leading-tight tracking-normal text-[#07194c]">Patients</h1>
           <p className="mt-2 text-[16px] font-medium text-[#68779f]">
-            {records.length} imported tests - {pendingCount} pending metadata - {completedCount} completed
+            {records.length} imported tests - {pendingCount} Patient&apos;s Info pending - {completedCount} completed
           </p>
         </div>
 
         <label className="flex h-12 min-w-0 items-center gap-4 rounded-md border border-[#d7deea] bg-[#f8fbff] px-5 shadow-sm focus-within:border-[#0647ff] focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
           <FiSearch aria-hidden="true" className="shrink-0 text-[#64749f]" size={21} />
           <input
+            aria-label="Search patient records"
             className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-[#07194c] outline-none placeholder:text-[#6f7fa6]"
-            placeholder="Search by Patient ID or Patient Name..."
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search ID, name, date, history, description, status, or age..."
             type="search"
+            value={searchQuery}
           />
         </label>
 
@@ -250,18 +303,25 @@ export function PatientsPage() {
               type="button"
             >
               <FiFilter aria-hidden="true" size={20} />
-              Filter
+              {activeFilter === 'All Records' ? 'Filter' : activeFilter}
             </button>
             {isFilterOpen ? (
               <div className="absolute right-0 top-14 z-20 w-56 overflow-hidden rounded-lg border border-[#e1e7f2] bg-white py-2 shadow-[0_18px_44px_rgba(15,23,42,0.14)]">
                 {filterOptions.map((option) => (
                   <button
-                    className="block w-full px-4 py-2.5 text-left text-sm font-bold text-[#07194c] transition hover:bg-[#f6f8fb]"
+                    aria-pressed={activeFilter === option}
+                    className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-bold transition hover:bg-[#f6f8fb] ${
+                      activeFilter === option ? 'bg-[#eef4ff] text-[#0647ff]' : 'text-[#07194c]'
+                    }`}
                     key={option}
-                    onClick={() => setIsFilterOpen(false)}
+                    onClick={() => {
+                      setActiveFilter(option);
+                      setIsFilterOpen(false);
+                    }}
                     type="button"
                   >
                     {option}
+                    {activeFilter === option ? <FiCheckCircle aria-hidden="true" /> : null}
                   </button>
                 ))}
               </div>
@@ -333,7 +393,7 @@ export function PatientsPage() {
         <div className="rounded-lg border border-[#dfe7f2] bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3">
             <FiDatabase aria-hidden="true" className="text-[#d97706]" size={22} />
-            <p className="text-sm font-bold text-[#68779f]">Pending Metadata</p>
+            <p className="text-sm font-bold text-[#68779f]">Patient&apos;s Info Pending</p>
           </div>
           <p className="mt-3 text-3xl font-extrabold text-[#d97706]">{pendingCount}</p>
           <p className="mt-1 text-sm font-medium text-[#68779f]">Records waiting for completion</p>
@@ -349,9 +409,10 @@ export function PatientsPage() {
       </div>
 
       <PatientTable
+        isSearchActive={Boolean(searchQuery.trim()) || activeFilter !== 'All Records'}
         onEditMetadata={setEditingRecord}
         onViewAnalysis={setAnalysisRecord}
-        records={records}
+        records={filteredRecords}
       />
 
       <ImportPreviewModal

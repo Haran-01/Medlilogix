@@ -45,7 +45,7 @@ export function PatientMetadataModal({ isOpen, onClose, onSave, record }: Patien
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Metadata">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Patient's Info">
       <form
         className="space-y-5"
         onSubmit={handleSubmit(async (values) => {
