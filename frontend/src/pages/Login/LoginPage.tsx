@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiLock, FiMail } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiLock, FiMail } from 'react-icons/fi';
 import { z } from 'zod';
 import medilogixLogo from '../../assets/medilogix-logo.png';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +20,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { register, handleSubmit } = useForm<LoginFormValues>();
 
   async function onSubmit(values: LoginFormValues) {
@@ -75,9 +76,17 @@ export function LoginPage() {
                 autoComplete="current-password"
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
                 placeholder="Enter password"
-                type="password"
+                type={isPasswordVisible ? 'text' : 'password'}
                 {...register('password')}
               />
+              <button
+                aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded text-[#64749f] transition hover:bg-[#eef4ff] hover:text-[#0647ff] focus:outline-none focus:ring-2 focus:ring-[#0647ff]"
+                onClick={() => setIsPasswordVisible((visible) => !visible)}
+                type="button"
+              >
+                {isPasswordVisible ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+              </button>
             </span>
           </label>
 

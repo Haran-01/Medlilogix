@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
-import { FiKey, FiMail, FiPhone, FiShield, FiUser } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiKey, FiMail, FiPhone, FiShield, FiUser } from 'react-icons/fi';
 import { Card } from '../../components/common/Card';
 import { PageHeader } from '../../components/common/PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
@@ -134,14 +134,26 @@ function PasswordField({
   label: string;
   register: UseFormRegisterReturn;
 }) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   return (
     <label className="block">
       <span className="text-sm font-bold text-[#07194c]">{label}</span>
-      <input
-        className="mt-2 h-11 w-full rounded-md border border-[#d7deea] bg-white px-3 text-sm outline-none focus:border-[#0647ff] focus:ring-4 focus:ring-blue-100"
-        type="password"
-        {...register}
-      />
+      <span className="mt-2 flex h-11 items-center rounded-md border border-[#d7deea] bg-white px-3 focus-within:border-[#0647ff] focus-within:ring-4 focus-within:ring-blue-100">
+        <input
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+          type={isPasswordVisible ? 'text' : 'password'}
+          {...register}
+        />
+        <button
+          aria-label={isPasswordVisible ? `Hide ${label}` : `Show ${label}`}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded text-[#64749f] transition hover:bg-[#eef4ff] hover:text-[#0647ff] focus:outline-none focus:ring-2 focus:ring-[#0647ff]"
+          onClick={() => setIsPasswordVisible((visible) => !visible)}
+          type="button"
+        >
+          {isPasswordVisible ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+        </button>
+      </span>
     </label>
   );
 }

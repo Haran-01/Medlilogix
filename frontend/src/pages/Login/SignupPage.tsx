@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiHash, FiImage, FiLock, FiMail, FiPhone, FiUser } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiHash, FiImage, FiLock, FiMail, FiPhone, FiUser } from 'react-icons/fi';
 import { z } from 'zod';
 import medilogixLogo from '../../assets/medilogix-logo.png';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -188,6 +188,9 @@ function Field({
   register: UseFormRegisterReturn;
   type?: string;
 }) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const isPasswordField = type === 'password';
+
   return (
     <label className="block">
       <span className="text-sm font-bold">{label}</span>
@@ -197,9 +200,19 @@ function Field({
           autoComplete="off"
           className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
           placeholder={placeholder}
-          type={type}
+          type={isPasswordField && isPasswordVisible ? 'text' : type}
           {...register}
         />
+        {isPasswordField ? (
+          <button
+            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded text-[#64749f] transition hover:bg-[#eef4ff] hover:text-[#0647ff] focus:outline-none focus:ring-2 focus:ring-[#0647ff]"
+            onClick={() => setIsPasswordVisible((visible) => !visible)}
+            type="button"
+          >
+            {isPasswordVisible ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+          </button>
+        ) : null}
       </span>
     </label>
   );
