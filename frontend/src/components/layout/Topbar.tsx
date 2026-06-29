@@ -1,6 +1,6 @@
 import { FiLogOut, FiUser } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import medilogixLogo from '../../assets/medilogix-logo.png';
+import { BrandLockup } from '../common/BrandLockup';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function Topbar() {
@@ -16,14 +16,11 @@ export function Topbar() {
     <header className="sticky top-0 z-20 border-b border-[#dfe7f2] bg-white/92 shadow-[0_12px_34px_rgba(15,23,42,0.06)] backdrop-blur">
       <div className="mx-auto flex min-h-[76px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <button
-          className="flex min-w-0 items-center gap-3 rounded-md text-left transition hover:opacity-90"
+          className="min-w-0 rounded-md text-left transition hover:opacity-90"
           onClick={() => navigate('/patients')}
           type="button"
         >
-          <span className="grid h-11 w-11 place-items-center rounded-lg border border-[#e1e7f2] bg-white shadow-sm">
-            <img alt="MediLogiX" className="h-7 w-auto object-contain" src={medilogixLogo} />
-          </span>
-          <span className="text-xl font-extrabold tracking-normal text-[#07194c]">Medilogix</span>
+          <BrandLockup variant="header" />
         </button>
 
         <div className="flex items-center gap-3">

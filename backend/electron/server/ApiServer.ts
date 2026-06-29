@@ -41,14 +41,17 @@ export class MedilogixApiServer {
 
     await this.database.initialize();
 
-    const port = Number(process.env.MEDILOGIX_API_PORT ?? 3417);
+    const port = Number(process.env.PORT ?? process.env.MEDILOGIX_API_PORT ?? 3417);
+    const host = process.env.MEDILOGIX_API_HOST ?? '127.0.0.1';
 
     await new Promise<void>((resolve, reject) => {
       this.server.once('error', reject);
-      this.server.listen(port, '127.0.0.1', () => {
+      this.server.listen(port, host, () => {
         this.server.off('error', reject);
         const address = this.server.address() as AddressInfo;
-        this.baseUrl = `http://127.0.0.1:${address.port}/api`;
+        const publicUrl = process.env.MEDILOGIX_API_PUBLIC_URL?.replace(/\/$/, '');
+        const baseHost = host === '0.0.0.0' ? '127.0.0.1' : host;
+        this.baseUrl = publicUrl ? `${publicUrl}/api` : `http://${baseHost}:${address.port}/api`;
         resolve();
       });
     });
@@ -519,11 +522,17 @@ export class MedilogixApiServer {
     const origin = request.headers.origin;
 
     if (origin) {
+      const configuredOrigins = (process.env.MEDILOGIX_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
       const isAllowedOrigin =
         origin === 'null' ||
         origin.startsWith('file://') ||
         origin.startsWith('http://127.0.0.1:') ||
-        origin.startsWith('http://localhost:');
+        origin.startsWith('http://localhost:') ||
+        configuredOrigins.includes(origin) ||
+        configuredOrigins.includes('*');
 
       if (!isAllowedOrigin) {
         return false;

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import medilogixLogo from '../../assets/medilogix-logo.png';
+import senstimLogo from '../../assets/senstim-logo.jpeg';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PatientTestRecord } from '../../types/patientTest';
 import { formatNumber } from '../../utils/format';
@@ -64,7 +65,7 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl" title="Pressure Analysis">
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-8 rounded-lg border border-[#e7ebf3] bg-[#f8fbff] px-4 py-3">
+        <div className="flex flex-col gap-4 rounded-lg border border-[#e7ebf3] bg-[#f8fbff] px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
           <div className="grid min-w-0 max-w-[760px] flex-1 gap-x-4 gap-y-2 sm:grid-cols-2">
             {patientDetails.map((detail) => (
               <div className="min-w-0" key={detail.label}>
@@ -73,7 +74,8 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
               </div>
             ))}
           </div>
-          <div className="ml-auto flex min-w-[220px] justify-end border-l border-[#dfe7f2] pl-8">
+          <div className="flex w-full items-center justify-between gap-4 border-t border-[#dfe7f2] pt-4 sm:justify-end lg:ml-auto lg:w-auto lg:min-w-[300px] lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+            <img alt="SenStim PNS, TOF Monitor" className="h-14 max-w-[150px] object-contain" src={senstimLogo} />
             <div className="grid h-20 w-20 shrink-0 place-items-center rounded-lg border border-[#dfe7f2] bg-white p-3 shadow-sm">
               <img alt={`${doctor?.name ?? 'Hospital'} logo`} className="max-h-14 max-w-14 object-contain" src={hospitalLogo} />
             </div>

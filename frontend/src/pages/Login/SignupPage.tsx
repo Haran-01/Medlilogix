@@ -3,7 +3,7 @@ import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiEye, FiEyeOff, FiHash, FiImage, FiLock, FiMail, FiPhone, FiUser } from 'react-icons/fi';
 import { z } from 'zod';
-import medilogixLogo from '../../assets/medilogix-logo.png';
+import { BrandLockup } from '../../components/common/BrandLockup';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { registerDoctor } from '../../services/auth.service';
 
@@ -122,7 +122,7 @@ export function SignupPage() {
     <main className="grid min-h-screen place-items-center bg-[#f4f7fb] px-4 py-8 text-[#07194c]">
       <section className="w-full max-w-[520px] rounded-xl border border-[#e1e7f2] bg-white p-7 shadow-[0_24px_70px_rgba(15,23,42,0.12)] sm:p-9">
         <div className="text-center">
-          <img alt="MediLogiX" className="mx-auto h-12 w-auto object-contain" src={medilogixLogo} />
+          <BrandLockup />
           <h1 className="mt-6 text-3xl font-extrabold tracking-normal">Create account</h1>
           <p className="mt-2 text-sm font-medium text-[#64749f]">Register your device and user credentials.</p>
         </div>
