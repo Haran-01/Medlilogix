@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiCheckCircle,
   FiCloud,
@@ -18,6 +18,7 @@ import { PatientTable } from '../../components/patients/PatientTable';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { createPatientTest, getPatientTests, updatePatientTestMetadata } from '../../services/patientTests.service';
 import type { PatientMetadataFormValues, PatientTestRecord } from '../../types/patientTest';
+import { importTxtFilesFromBrowser, type TxtImportResult } from '../../utils/txtImport';
 
 function isCompleted(values: PatientMetadataFormValues) {
   return Boolean(values.patientName && values.gender && values.age && values.caseHistory && values.description);
@@ -95,6 +96,7 @@ export function PatientsPage() {
   });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [txtFilesFoundCount, setTxtFilesFoundCount] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const pendingCount = useMemo(() => records.filter((record) => record.status === 'Pending').length, [records]);
   const completedCount = records.length - pendingCount;
@@ -130,11 +132,12 @@ export function PatientsPage() {
 
     return searchedRecords;
   }, [activeFilter, records, searchQuery]);
-  const usbState: UsbImportState = usbStatus.connected ? 'Ready to Import' : 'No USB Connected';
-  const usbDeviceName = usbStatus.device?.deviceName ?? 'No USB Connected';
+  const hasElectronImport = Boolean(window.medilogix?.usb);
+  const usbState: UsbImportState = hasElectronImport ? (usbStatus.connected ? 'Ready to Import' : 'No USB Connected') : 'Ready to Import';
+  const usbDeviceName = hasElectronImport ? (usbStatus.device?.deviceName ?? 'No USB Connected') : 'Browser File Picker';
   const usbDriveLetter = usbStatus.device?.driveLetter ?? '-';
-  const usbConnectionStatus = usbStatus.connected ? 'Connected' : 'Disconnected';
-  const displayedTxtFilesFound = usbStatus.connected ? (txtFilesFoundCount ?? txtFilesFound) : '-';
+  const usbConnectionStatus = hasElectronImport ? (usbStatus.connected ? 'Connected' : 'Disconnected') : 'Available';
+  const displayedTxtFilesFound = hasElectronImport && !usbStatus.connected ? '-' : (txtFilesFoundCount ?? txtFilesFound);
 
   const pushToast = useCallback((message: string, tone: ToastMessage['tone']) => {
     const id = `${Date.now()}-${message}`;
@@ -221,21 +224,9 @@ export function PatientsPage() {
     }
   }
 
-  async function handleStartImport() {
-    setIsImportPreviewOpen(false);
-    setIsImportProgressOpen(true);
-    setImportButtonState('importing');
-
-    try {
-      const result = await window.medilogix?.usb.importTxtFiles();
-
-      if (!result) {
-        pushToast('Import is only available in the Electron desktop app', 'warning');
-        return;
-      }
-
-      setTxtFilesFoundCount(result.txtFilesFound);
-      const importedRecords = result.records.map((record) => ({
+  function applyImportResult(result: TxtImportResult) {
+    setTxtFilesFoundCount(result.txtFilesFound);
+    const importedRecords = result.records.map((record) => ({
         ...record,
         recordKey: `imported-${record.id}-${record.importedAt}`,
         samples: record.samples.map((sample) => ({
@@ -245,15 +236,51 @@ export function PatientsPage() {
         })),
       }));
 
-      setRecords((currentRecords) => [...importedRecords, ...currentRecords]);
+    setRecords((currentRecords) => [...importedRecords, ...currentRecords]);
 
-      if (result.records.length > 0) {
-        pushToast(`${result.records.length} files imported successfully.`, 'success');
+    if (result.records.length > 0) {
+      pushToast(`${result.records.length} files imported successfully.`, 'success');
+    }
+
+    result.errors.forEach((error) => {
+      pushToast(`${error.fileName}: ${error.message}`, result.txtFilesFound === 0 ? 'warning' : 'danger');
+    });
+  }
+
+  async function handleBrowserFileImport(files: FileList | null) {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    setIsImportPreviewOpen(false);
+    setIsImportProgressOpen(true);
+    setImportButtonState('importing');
+
+    try {
+      applyImportResult(await importTxtFilesFromBrowser(files));
+    } catch {
+      pushToast('Import Failed', 'danger');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
+      setIsImportProgressOpen(false);
+      setImportButtonState('ready');
+    }
+  }
 
-      result.errors.forEach((error) => {
-        pushToast(`${error.fileName}: ${error.message}`, result.txtFilesFound === 0 ? 'warning' : 'danger');
-      });
+  async function handleStartImport() {
+    if (!window.medilogix?.usb) {
+      fileInputRef.current?.click();
+      return;
+    }
+
+    setIsImportPreviewOpen(false);
+    setIsImportProgressOpen(true);
+    setImportButtonState('importing');
+
+    try {
+      applyImportResult(await window.medilogix.usb.importTxtFiles());
     } catch {
       pushToast('Import Failed', 'danger');
     } finally {
@@ -272,6 +299,16 @@ export function PatientsPage() {
   return (
     <div className="space-y-6">
       <ToastStack messages={toasts} />
+      <input
+        ref={fileInputRef}
+        accept=".txt,text/plain"
+        className="hidden"
+        multiple
+        onChange={(event) => {
+          void handleBrowserFileImport(event.target.files);
+        }}
+        type="file"
+      />
 
       <div className="rounded-xl border border-[#dfe7f2] bg-white/92 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="grid gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(300px,520px)_auto] xl:items-center">
@@ -351,7 +388,7 @@ export function PatientsPage() {
               <FiHardDrive aria-hidden="true" size={26} />
             </div>
             <div>
-              <p className="text-sm font-bold uppercase tracking-normal text-[#68779f]">USB Device</p>
+              <p className="text-sm font-bold uppercase tracking-normal text-[#68779f]">Import Source</p>
               <h2 className="mt-1 text-xl font-extrabold tracking-normal text-[#07194c]">{usbDeviceName}</h2>
               <span className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ring-1 ${usbStateClasses[usbState]}`}>
                 {usbState === 'Importing' || usbState === 'Scanning Files' ? (
@@ -374,8 +411,8 @@ export function PatientsPage() {
               <p className="mt-2 text-base font-extrabold text-[#07194c]">{displayedTxtFilesFound}</p>
             </div>
             <div className="rounded-lg border border-[#e7edf6] bg-[#f8fbff] p-4">
-              <p className="text-xs font-bold uppercase text-[#68779f]">Drive</p>
-              <p className="mt-2 text-base font-extrabold text-[#07194c]">{usbDriveLetter}</p>
+              <p className="text-xs font-bold uppercase text-[#68779f]">{hasElectronImport ? 'Drive' : 'Mode'}</p>
+              <p className="mt-2 text-base font-extrabold text-[#07194c]">{hasElectronImport ? usbDriveLetter : 'File Upload'}</p>
             </div>
           </div>
         </div>
