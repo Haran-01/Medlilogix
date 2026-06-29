@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsx electron/server/start.ts"
+    "start": "tsx src/server/start.ts"
   },
   "dependencies": {
     "tsx": "^4.22.4"

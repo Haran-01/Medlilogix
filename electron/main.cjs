@@ -1,7 +1,7 @@
 const path = require('node:path');
 const { createRequire } = require('node:module');
 
-const appRoot = path.join(__dirname, '..', '..');
+const appRoot = path.join(__dirname, '..');
 const frontendRoot = path.join(appRoot, 'frontend');
 const backendRoot = path.join(appRoot, 'backend');
 const frontendRequire = createRequire(path.join(frontendRoot, 'package.json'));
@@ -9,9 +9,9 @@ const frontendRequire = createRequire(path.join(frontendRoot, 'package.json'));
 frontendRequire('tsx/cjs');
 
 const { app, BrowserWindow, ipcMain, shell } = frontendRequire('electron');
-const { ImportQueue } = require('./parser/ImportQueue.ts');
-const { MedilogixApiServer } = require('./server/ApiServer.ts');
-const { loadEnvFile } = require('./server/Env.ts');
+const { ImportQueue } = require('../backend/src/parser/ImportQueue.ts');
+const { MedilogixApiServer } = require('../backend/src/server/ApiServer.ts');
+const { loadEnvFile } = require('../backend/src/server/Env.ts');
 const { USBDetector } = require('./usb/USBDetector.ts');
 const { USB_EVENTS, USB_IPC_CHANNELS } = require('./usb/USBEvents.ts');
 
