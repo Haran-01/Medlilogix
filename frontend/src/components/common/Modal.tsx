@@ -5,6 +5,7 @@ interface ModalProps {
   children: ReactNode;
   isOpen: boolean;
   onClose: () => void;
+  scrollable?: boolean;
   size?: 'md' | 'xl';
   title: string;
 }
@@ -14,7 +15,7 @@ const sizeClasses = {
   xl: 'max-w-6xl',
 };
 
-export function Modal({ children, isOpen, onClose, size = 'md', title }: ModalProps) {
+export function Modal({ children, isOpen, onClose, scrollable = true, size = 'md', title }: ModalProps) {
   if (!isOpen) {
     return null;
   }
@@ -33,7 +34,7 @@ export function Modal({ children, isOpen, onClose, size = 'md', title }: ModalPr
             <FiX aria-hidden="true" size={22} />
           </button>
         </header>
-        <div className="max-h-[calc(92vh-82px)] overflow-y-auto p-6">{children}</div>
+        <div className={scrollable ? 'max-h-[calc(92vh-82px)] overflow-y-auto p-6' : 'p-6'}>{children}</div>
       </section>
     </div>
   );

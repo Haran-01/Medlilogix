@@ -48,8 +48,6 @@ const filterOptions = [
   'Pending',
   'Newest First',
   'Oldest First',
-  'Highest Peak PSI',
-  'Lowest Peak PSI',
 ] as const;
 
 type RecordFilter = (typeof filterOptions)[number];
@@ -121,13 +119,6 @@ export function PatientsPage() {
     if (activeFilter === 'Oldest First') {
       return sortedRecords.sort((left, right) => getRecordTime(left) - getRecordTime(right));
     }
-    if (activeFilter === 'Highest Peak PSI') {
-      return sortedRecords.sort((left, right) => right.peakPsi - left.peakPsi);
-    }
-    if (activeFilter === 'Lowest Peak PSI') {
-      return sortedRecords.sort((left, right) => left.peakPsi - right.peakPsi);
-    }
-
     return searchedRecords;
   }, [activeFilter, records, searchQuery]);
   const usbState: UsbImportState = usbStatus.connected ? 'Ready to Import' : 'No USB Connected';

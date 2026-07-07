@@ -52,7 +52,7 @@ export function PatientDetailsPage() {
         description={record.description}
         actions={<StatusBadge status={record.status === 'Completed' ? 'stable' : 'review'} />}
       />
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <p className="text-sm font-semibold text-slate-500">Patient ID</p>
           <p className="mt-2 text-xl font-bold text-slate-950">{record.id}</p>
@@ -64,10 +64,6 @@ export function PatientDetailsPage() {
         <Card>
           <p className="text-sm font-semibold text-slate-500">Test Date</p>
           <p className="mt-2 text-xl font-bold text-slate-950">{record.testDate}</p>
-        </Card>
-        <Card>
-          <p className="text-sm font-semibold text-slate-500">Peak PSI</p>
-          <p className="mt-2 text-xl font-bold text-slate-950">{record.peakPsi.toFixed(1)} PSI</p>
         </Card>
       </div>
     </div>

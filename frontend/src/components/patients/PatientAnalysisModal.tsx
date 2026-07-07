@@ -1,4 +1,3 @@
-import { FiDownload, FiFileText, FiX } from 'react-icons/fi';
 import {
   CartesianGrid,
   Line,
@@ -12,7 +11,6 @@ import medilogixLogo from '../../assets/medilogix-logo.png';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PatientTestRecord } from '../../types/patientTest';
 import { formatNumber } from '../../utils/format';
-import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { Modal } from '../common/Modal';
 
@@ -54,7 +52,6 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
   ];
 
   const statCards = [
-    { label: 'Peak PSI', value: `${record.peakPsi.toFixed(1)} PSI` },
     { label: 'Average PSI', value: `${getAverage(record).toFixed(1)} PSI` },
     { label: 'Minimum PSI', value: `${getMinimum(record).toFixed(1)} PSI` },
     { label: 'Test Duration', value: record.testDuration },
@@ -62,8 +59,8 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl" title="Pressure Analysis">
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} scrollable={false} size="xl" title="Pressure Analysis">
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-8 rounded-lg border border-[#e7ebf3] bg-[#f8fbff] px-4 py-3">
           <div className="grid min-w-0 max-w-[760px] flex-1 gap-x-4 gap-y-2 sm:grid-cols-2">
             {patientDetails.map((detail) => (
@@ -80,25 +77,24 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
           </div>
         </div>
 
-        <Card className="p-5">
+        <Card className="bg-[#eef9f1] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-extrabold text-[#07194c]">PSI Readings</h3>
-              <p className="mt-1 text-sm font-medium text-[#68779f]">Imported pressure trend from TXT sample data.</p>
             </div>
           </div>
-          <div className="h-[360px] w-full">
+          <div className="h-[300px] w-full rounded-xl bg-[#e7f6eb] p-2">
             <ResponsiveContainer height="100%" width="100%">
               <LineChart data={record.samples} margin={{ bottom: 12, left: 0, right: 16, top: 12 }}>
-                <CartesianGrid stroke="#e7ebf3" strokeDasharray="5 5" vertical={false} />
+                <CartesianGrid stroke="#cbe8d2" strokeDasharray="5 5" vertical={false} />
                 <XAxis dataKey="time" tick={{ fill: '#52628f', fontSize: 12 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fill: '#52628f', fontSize: 12 }} tickLine={false} axisLine={false} width={42} />
                 <Tooltip />
                 <Line
                   dataKey="psi"
-                  dot={{ fill: '#0647ff', r: 4 }}
+                  dot={{ fill: '#dc2626', r: 4 }}
                   name="PSI"
-                  stroke="#0647ff"
+                  stroke="#dc2626"
                   strokeWidth={3}
                   type="monotone"
                 />
@@ -107,7 +103,7 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
           </div>
         </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {statCards.map((stat) => (
             <Card className="p-4" key={stat.label}>
               <p className="text-xs font-bold uppercase text-[#68779f]">{stat.label}</p>
@@ -116,17 +112,6 @@ export function PatientAnalysisModal({ isOpen, onClose, record }: PatientAnalysi
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-[#e7ebf3] pt-5 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary">
-            <FiDownload aria-hidden="true" /> Download CSV
-          </Button>
-          <Button type="button" variant="secondary">
-            <FiFileText aria-hidden="true" /> Export PDF
-          </Button>
-          <Button onClick={onClose} type="button">
-            <FiX aria-hidden="true" /> Close
-          </Button>
-        </div>
       </div>
     </Modal>
   );
